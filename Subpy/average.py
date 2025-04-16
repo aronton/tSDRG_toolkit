@@ -14,6 +14,7 @@ def submitPara(parameterlist, tSDRG_path):
     Spin = parameterlist["Spin"]
     Ncore = parameterlist["Ncore"]
     partition = parameterlist["partition1"]
+    task = parameterlist["task"]
     para=scriptCreator.paraList1(parameterlist["L"],parameterlist["J"],parameterlist["D"],parameterlist["S"])
     L_num = para.L_num
     L_p_num = para.L_p_num
@@ -63,13 +64,14 @@ def submitPara(parameterlist, tSDRG_path):
     print("D_p_str:",D_p_str)
     print("D_s100:",D_s100)
     print("D_p_s100:",D_p_s100)
-
     Spin=parameterlist["Spin"]
     Pdis=parameterlist["Pdis"]
     chi=parameterlist["chi"]
     BC=parameterlist["BC"]
-    check_Or_Not=parameterlist["check_Or_Not"]
-
+    try:
+        check_Or_Not=parameterlist["check_Or_Not"]
+    except KeyError as e:
+        print(e)
     # with open("./", "r") as file:
     #     template = file.readlines()
     
@@ -77,25 +79,27 @@ def submitPara(parameterlist, tSDRG_path):
     script_path_tot = "" 
     submitlsit = []
     argvlist = []
-    for l,L in enumerate(L_num):
-        for j,J in enumerate(J_num):
-            for d,D in enumerate(D_num):
-                # for s_i in range(len(S_num)):
-                #     s = S_num[s_i]
-                argvlist.append([str(Spin),L,J,D,Pdis,chi,check_Or_Not])
+    # for l,L in enumerate(L_num):
+    #     for j,J in enumerate(J_num):
+    #         for d,D in enumerate(D_num):
+    #             # for s_i in range(len(S_num)):
+    #             #     s = S_num[s_i]
+    #             if parameterlist["task"] == "submit"
+    #                 argvlist.append([str(Spin),L,J,D,Pdis,chi,task,check_Or_Not])
                 # argvlist.append([str(Spin),L,J,D,Pdis,bondDim,str(s[0]),str(s[-1]),check_Or_Not])
     for l,L in enumerate(L_str):
         for j,J in enumerate(J_str):
             for d,D in enumerate(D_str):
                 # for s_i in range(len(S_num)):
                 #     s = S_num[s_i]
-                name = ["Spin"+str(Spin),L,J,D,"P"+str(Pdis),"BC="+BC,"chi"+str(chi),"partition="+str(partition),"seed1="+str(s1),"seed2="+str(s2),"ds="+str(ds)]
+                name = ["Spin"+str(Spin),L,J,D,"P"+str(Pdis),"BC="+BC,"chi"+str(chi),"partition="+str(partition),"seed1="+str(s1),"seed2="+str(s2),"ds="+str(ds),"task="+task]
                 name = "_".join(name)
                 submitlsit.append(name)
     return (submitlsit, argvlist)           
 
 # edit & submit task
 def EditandSub(paraPath,script_path,output_path,jobName):
+    task = ""
     with open(paraPath,"r") as file:
         elementlist = file.readlines()
         print(elementlist)
@@ -109,21 +113,25 @@ def EditandSub(paraPath,script_path,output_path,jobName):
                 s1 = str(element.split(":")[1].replace("\n",""))
             elif "seed2" in element:
                 s2 =str(element.split(":")[1].replace("\n",""))
-                
+            elif "task" in element:
+                task =str(element.split(":")[1].replace("\n",""))
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     output_path += f"/{jobName}.txt"
     
     replacements = {
         "replace1": jobName,
-        "replace2": str(ds),
+        "replace2": "10",
         "replace3": str(partition),
         "replace4": output_path
     }
-
-    with open("run1.sh", 'r') as file:
-        content = file.read()
-
+    print(task)
+    if task == "submit":
+        with open("run1.sh", 'r') as file:
+            content = file.read()
+    if task == "collect":
+        with open("runCollect.sh", 'r') as file:
+            content = file.read()
     # 依據 replacements 替換文字
     for old_text, new_text in replacements.items():
         content = content.replace(old_text, new_text)
@@ -161,20 +169,24 @@ def EditandSub(paraPath,script_path,output_path,jobName):
 def submit(parameterlist, tSDRG_path, tasklist):
     print(parameterlist)
     p = parameterlist
-    
     Ncore = parameterlist["Ncore"]
     partition = parameterlist["partition1"]
     Spin=parameterlist["Spin"]
     Pdis=parameterlist["Pdis"]
     chi=parameterlist["chi"]
     BC=parameterlist["BC"]
-    check_Or_Not=parameterlist["check_Or_Not"]
+    if parameterlist["task"] == "submit":
+        check_Or_Not=parameterlist["check_Or_Not"]
     ds=parameterlist["S"]["dS"]
 
     record_dir = tSDRG_path + "/tSDRG" + "/Main_" + str(Spin) + "/jobRecord" 
-    script_dir = record_dir + "/script" + "/" + str(BC) + "/B" + str(chi)
-    output_dir = record_dir + "/slurmOutput" + "/" + str(BC) + "/B" + str(chi)
-
+    if parameterlist["task"] == "collect":
+    # record_dir = tSDRG_path + "/tSDRG" + "/Main_" + str(Spin) + "/jobRecord" 
+        script_dir = record_dir + "/collect_script" + "/" + str(BC) + "/B" + str(chi)
+        output_dir = record_dir + "/collect_slurmOutput" + "/" + str(BC) + "/B" + str(chi)
+    else:
+        script_dir = record_dir + "/script" + "/" + str(BC) + "/B" + str(chi)
+        output_dir = record_dir + "/slurmOutput" + "/" + str(BC) + "/B" + str(chi)
     nt=datetime.datetime.now()
     now_year = str(nt.year)
     now_date = str(nt.year) + "_" + str(nt.month) + "_" + str(nt.day)
@@ -201,9 +213,17 @@ def submit(parameterlist, tSDRG_path, tasklist):
         
         script_path = script_dir + "/" + L + "/" + J + "/" + D  
         output_path = output_dir + "/" + L + "/" + J + "/" + D
-        if not os.path.exists("/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date])):
-            os.makedirs("/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date]))
-        paraPath = "/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date,"_".join([jobName,f"{now_time}.txt"])])
+
+        if parameterlist["task"]=="submit":
+            if not os.path.exists("/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date])):
+                os.makedirs("/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date]))
+            paraPath = "/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date,"_".join([jobName,f"{now_time}.txt"])])
+
+        if parameterlist["task"]=="collect":
+            if not os.path.exists("/".join([tSDRG_path,"Subpy","collectPara",now_year,now_date])):
+                os.makedirs("/".join([tSDRG_path,"Subpy","collectPara",now_year,now_date]))
+            paraPath = "/".join([tSDRG_path,"Subpy","collectPara",now_year,now_date,"_".join([jobName,f"{now_time}.txt"])])
+            
         # os.makedirs("/".join([tSDRG_path,"parameterRead",now_year,now_date,"_".join([jobName,f"{now_time}.txt"])]). exist_ok=True)
         with open(paraPath,"w") as file:
             for element in elementlist:
@@ -234,6 +254,9 @@ def submit(parameterlist, tSDRG_path, tasklist):
                     file.writelines(s + "\n")
                 elif "check" in element:
                     file.writelines(element + "\n")
+                elif "task" in element:
+                    s = str(element.replace("=",":"))
+                    file.writelines(s + "\n")
             file.writelines("ds:"+str(ds) + "\n")
         EditandSub(paraPath, script_path, output_path, jobName)
                 # print(element)
@@ -475,7 +498,22 @@ def collect(parameterlist, tSDRG_path):
         results = pool.starmap(collectData, runlist)
     print(results)
 
-def collectData(BC, J, D, L, P, m, phys):
+def collectData(parameterlist):
+    para=scriptCreator.paraList1(parameterlist["L"],parameterlist["J"],parameterlist["D"],parameterlist["S"])
+    BC = parameterlist["BC"]
+    Pdis = parameterlist["Pdis"]
+    chi = "m" + str(parameterlist["chi"])
+    s1 = int(parameterlist["S"]["S1"])
+    s2 = int(parameterlist["S"]["S2"])
+    for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
+        for L in para.L_str:
+            for J in para.J_str:
+                    arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
+    print(arg)         
+    print("---------------------col--------------------\n")
+    with multiprocessing.Pool(processes=len(s)*len(para.L_str)*len(para.J_str)) as pool:
+        results1 = pool.starmap(combine.Combine, arg)
+def collectDatatemp(BC, J, D, L, P, m, phys):
     
     sourcePathBase = tSDRG_path + "/tSDRG/Main_15/data_random/BC_re/J_re/D_re/L_re_P_re_m_re_s_re"
     targetPathBase = tSDRG_path + "/tSDRG/Main_15/data_random/BC_re/J_re/D_re/target"
@@ -699,7 +737,8 @@ def main():
     elif task == "check" or task == "f":
         Distribution(parameterlist)
     elif task == "collect" or task == "g":
-        collect(parameterlist,tSDRG_path)
+        tasklist = submitPara(parameterlist, tSDRG_path)
+        submit(parameterlist, tSDRG_path, tasklist)
     return
 
 if __name__ == '__main__' :

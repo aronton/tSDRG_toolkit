@@ -25,6 +25,9 @@ while IFS=: read -r key value; do
     fi
 done < "$FILE"
 
+echo "parameterfile : $FILE"
+echo "The working directory : $PWD"
+
 # 確保變數都有值
 if [[ -z "$s1" || -z "$s2" || -z "$ds" ]]; then
     echo "錯誤: s1, s2, ds 讀取失敗！"
@@ -36,7 +39,7 @@ cols=$(((s2 - s1 + 1) / ds ))
 echo "s1: $s1, s2: $s2, ds: $ds, cols: $cols"
 # 定義行數與列數
 rows=$ds
-cols=$((s2/ds))
+# cols=$((s2/ds))
 echo
 echo -e "$rows"
 echo -e "$cols"
@@ -58,13 +61,14 @@ for ((i=0; i<cols; i++)); do
     echo  # 輸出一行
     date
     for ((j=0; j<rows; j++)); do
-        index=$((i * rows + j + 1))
-        echo "srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} >> ${outputPath}&"
-        srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} >> ${outputPath}&
+        index=$((s1 - 1 + i * rows + j + 1))
+        echo "srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} &"
+        srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} &
     done
     wait
     echo  # 輸出一行
     echo "Round${i} finished $(date)"
 done
+python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ${FILE}
 
 echo "Job finished $(date)"

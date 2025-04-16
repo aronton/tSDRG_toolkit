@@ -6,6 +6,7 @@ import sys
 import tarfile
 import datetime
 import multiprocessing
+import scriptCreator
 from pathlib import Path
 import shutil
 
@@ -13,8 +14,7 @@ import shutil
 tSDRG_path = "/dicos_ui_home/aronton/tSDRG_random"
 group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
 
-J = sys.argv[1]
-
+    
 sourcelist = {"ZL":"ZL.csv", "energy":"energy.csv", "seed":"s_re_seed.csv",\
     "corr1":"_".join(["L_re","P_re","m_re","s_re","corr1.csv"]), "corr2":"_".join(["L_re","P_re","m_re","s_re","corr2.csv"]),\
     "ZLI":"ZLI.csv", "ZLC":"ZLC.csv", "w_loc":"w_loc.csv", "J_list":"J_list.csv", "dimerization":"dimerization.csv",\
@@ -57,6 +57,16 @@ tarlist = {
 #     "seed":"_".join(["seed","L_re","P_re","m_re","s_re.txt"]),
 #     "dimerization":"_".join(["dimerization","L_re","P_re","m_re","s_re.txt"])
 #     }
+
+def parameterRead(filePath):
+    with open(filePath,"r") as a:
+        a = a.readlines()    
+        for i,v in enumerate(a):
+            key = v.split(":")[0]
+            value = v.split(":")[1]
+            if key in paralist:
+                paralist[key] = value 
+            
 
 def checkInside(s, f, sample, phys):
     with open(f,"r") as a:
@@ -197,44 +207,20 @@ def ZLAverage(BC, J, D, L, P, m, phys):
                 continue
 def Combine(BC, J, D, L, P, m, phys, s1, s2):
     folder = creatDir(BC, J, D, L, P, m, phys)
-    # mySourceFolder = folder[0]
-    # groupSourceFolder = folder[1]
-    # myTarFolder = folder[2]
-    # groupTarFolder = folder[3]
-
     name = creatName(BC, J, D, L, P, m, phys)
-    # mySourceName = creatSourceName(BC, J, D, L, P, m, phys)
-    # groupSourceName = creatCpName(BC, J, D, L, P, m, phys)
-    # groupColName = creatColName(BC, J, D, L, P, m, phys)
-    # myColName = creatColName(BC, J, D, L, P, m, phys).replace(group_path ,tSDRG_path)
-    
-    # if not os.path.exists(groupColName) or not os.path.exists(myColName):
-    #     os.makedirs(groupColName)
-    #     os.makedirs(myColName)
 
     mySourcePath = folder[0] + "/" + name[0]
     groupSourcePath = folder[1] + "/" + name[1]
     myTarPath = folder[2] + "/" + name[2]
     groupTarPath = folder[3] + "/" + name[3]
-    # source = folder[0] + source
-    # collect1 = folder[2] + collect
-    # collect2 = folder[0].replace("s_re","").replace("data_random","data_collect") + "/" + collect
-    # length = 0
-    # if os.path_exist(collect):
-    #     with open(collect, "r") as targetFile:
-    #         length = len(targetFile.readlines())
-    # else:
+
     seedArray = list(range(s1,s2+1))
-    # collect1 = collect.replace("_s_re","")
-    # print(f"collect:{collect1}, {collect2}")
-    
-    # print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")
+
     context = f"{phys}\n"
     for seed in  seedArray:
         groupSource = groupSourcePath.replace("s_re",str(seed))
         mySource = mySourcePath.replace("s_re",str(seed))
-        # print(f"mySource:{mySource}")
-        # print(f"groupSource:{groupSource}")
+
         if os.path.exists(groupSource) and os.path.exists(mySource):
             if compare(groupSource, mySource, seed):
                 fcontext = fread(groupSource,phys)
@@ -259,19 +245,9 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
                 context += f"{seed}:{fcontext}\n"
             else:
                 fcontext = fread(groupSource,phys)
-                # print(f"fcontext:{fcontext}")
                 if fcontext == None:
                     continue
                 context += f"{seed}:{fcontext}\n"              
-    # print(context)  
-            # if length > seed:
-            #     context += fcontext + "\n"
-            # else:
-            #     exist = checkInside(fcontext, sourcePath, sample, phys)
-            #     if exist == False:
-            #         context += fcontext + "\n"
-    # groupTarPath = groupTarPath
-    # myTarPath = myTarPath
 
 
     if context != f"{phys}\n":
@@ -281,6 +257,22 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
         with open(groupTarPath, "w") as targetFile1, open(myTarPath, 'w') as targetFile2:
             targetFile1.write(context)
             targetFile2.write(context)
+
+def parameter_read_dict(filename):
+    parameters = {}
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            for line in file:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if key:
+                        parameters[key] = value
+    except FileNotFoundError:
+        print(f"無法開啟檔案: {filename}")
+    
+    return parameters
 
 # def corrAverage(BC, J, D, L, P, m, phys):
 #     folder = creatDir()
@@ -328,31 +320,48 @@ def gapAverage(BC, J, D, L, P, m, phys):
 #             else
 #                 continue
             
-arg = []
-Jstr = [f"Jdis{str(i).zfill(3)}" for i in range(int(J),int(J)+1)]
-# Dstr = [f"Dim{str(i).zfill(3)}" for i in range(101)]
-# Lstr = [f"L{num}" for num in range(31, 255, 32)]  # 只有 L512
-Lstr = [f"L{num}" for num in range(16, 513, 16)]  # 只有 L512
+if __name__ == "__main__":
+    file = sys.argv[1]
+    arg = []
+    # Jstr = [f"Jdis{str(i).zfill(3)}" for i in range(int(J),int(J)+1)]
+    # Jstr = [f"Jdis{str(i).zfill(3)}" for i in range(30,81,50)]
 
-for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
-    for L in Lstr:
-        for J in Jstr:
-                  arg.append(("PBC", J, "Dim000", L, "P10", "m40", s, 1, 30000))
-print(Jstr)
-print(Lstr)
-                  
+    # Dstr = [f"Dim{str(i).zfill(3)}" for i in range(101)]
+    # Lstr = [f"L{num}" for num in range(31, 255, 32)]  # 只有 L512
+    # Lstr = [f"L{num}" for num in range(64, 129, 64)]  # 只有 L512
+    a = scriptCreator.para("read",file)
+    parameterlist = a.para
+    para=scriptCreator.paraList1(parameterlist["L"],parameterlist["J"],parameterlist["D"],parameterlist["S"])
+    BC = parameterlist["BC"]
+    Pdis = parameterlist["Pdis"]
+    chi = "m" + str(parameterlist["chi"])
+    s1 = int(parameterlist["S"]["S1"])
+    s2 = int(parameterlist["S"]["S2"])
+    for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
+        for L in para.L_str:
+            for J in para.J_str:
+                    arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, 1, s2))
+    # s1 = 1
+    # s2 = 30000
+    # for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
+    #     for L in ["L31","L63","L127"]:
+    #         for J in ["Jdis030","Jdis080"]:
+    #                 arg.append(("OBC", J, "Dim000", L, "P10", "m40", s, s1, s2))
+    # print(Jstr)
+    # print(Lstr)
+    print(arg)         
 
-def fun(arg):
-    print("---------------------col--------------------\n")
-    with multiprocessing.Pool(processes=20) as pool:
-        results1 = pool.starmap(Combine, arg)
-    # print("---------------------del--------------------\n")
-    # with multiprocessing.Pool(processes=20) as pool:
-    #     results1 = pool.starmap(checkAndDelete, arg)
-        
-# 計算函數執行時間
-execution_time = timeit.timeit(lambda: fun(arg), number=1)
+    def fun(arg):
+        print("---------------------col--------------------\n")
+        with multiprocessing.Pool(processes=10) as pool:
+            results1 = pool.starmap(Combine, arg)
+        # print("---------------------del--------------------\n")
+        # with multiprocessing.Pool(processes=20) as pool:
+        #     results1 = pool.starmap(checkAndDelete, arg)
+            
+    # 計算函數執行時間
+    execution_time = timeit.timeit(lambda: fun(arg), number=1)
 
-# 執行並顯示結果
-# results1, results2 = fun(arg)
-print(f"Execution time: {execution_time} seconds")
+    # 執行並顯示結果
+    # results1, results2 = fun(arg)
+    print(f"Execution time: {execution_time} seconds")    

@@ -1,20 +1,20 @@
 #!/bin/bash
-#SBATCH --partition=edr1-al9_long_serial
-#SBATCH --job-name=combinePBC
-#SBATCH --cpus-per-task=10
-#SBATCH --output=outputPBC/combinePBC_%j.out
+#SBATCH --partition=edr1-al9_large
+#SBATCH --job-name=combineOBC
+#SBATCH --cpus-per-task=20
+#SBATCH --output=outputOBC/combineOBC_%j.out
 
 date
 
 source /dicos_ui_home/aronton/.bashrc
 
 # 確保 output 資料夾存在
-mkdir -p outputPBC
+mkdir -p outputOBC
 
 # 總任務數
-TOTAL=300
+TOTAL=1
 # 每輪同時跑幾個
-BATCH=10
+BATCH=1
 
 for ((i=1; i<=TOTAL; i+=BATCH))
 do
@@ -26,7 +26,7 @@ do
     do
         idx=$((i + j))
         srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=10 \
-             --output=outputPBC/combinePBC_${idx}.out \
+             --output=outputOBC/combineOBC_${idx}.out \
              python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py $idx &
     done
 

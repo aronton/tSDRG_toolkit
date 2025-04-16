@@ -102,7 +102,7 @@ class paraList1:
         #     return
         S_dic = {}
         for key,value in dic.items():
-            print(f"value{value}")
+            # print(f"value{value}")
             S_dic.update([(key,int(value))])
         if dic["S1"] == dic["S2"]:
             self.S_num = [[dic["S1"],dic["S2"]]]
@@ -150,7 +150,37 @@ class para:
         elif task == "collect":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
-                 "BC":None,"Pdis":None,"chi":None,"status":None,"Ncore":None,"partition1":None,"task":"collect"}
+                 "BC":None,"Pdis":None,"chi":None,"partition1":None,"Ncore":None,"task":"collect"}
+        elif task == "read":
+            self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
+                 "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
+                 "BC":None,"Pdis":None,"chi":None,"status":None,"Ncore":None,"partition1":None}
+            self.setfromfile()
+    def setfromfile(self):    
+        parameter = self.parameter_read_dict(self.partitionlsit)
+        self.para["S"] = {"S1":int(parameter["s1"]),"S2":int(parameter["s2"]),"dS":int(parameter["ds"])}
+        self.para["L"] = {"L1":int(parameter["L"]),"L2":int(parameter["L"]),"dL":0}
+        self.para["J"] = {"J1":float(parameter["J"]),"J2":float(parameter["J"]),"dJ":0}
+        self.para["D"] = {"D1":float(parameter["D"]),"D2":float(parameter["D"]),"dD":0}
+        self.para["BC"] = parameter["BC"]
+        self.para["Pdis"] = int(parameter["Pdis"])
+        self.para["chi"] = int(parameter["chi"])                           
+    def parameter_read_dict(self,filename):
+        parameters = {}
+        try:
+            with open(filename, 'r', encoding='utf-8') as file:
+                for line in file:
+                    if ':' in line:
+                        key, value = line.split(':', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        if key:
+                            parameters[key] = value
+        except FileNotFoundError:
+            print(f"無法開啟檔案: {filename}")
+        
+        return parameters
+            
     def keyin(self):
         for key in self.para.keys():
             eval("self.set_" + key + "()")
@@ -346,6 +376,8 @@ class para:
             print("only int") 
         self.para["Ncore"] = Ncore
     def set_partition1(self):
+        if self.para["task"] == "submit" or self.para["task"] == "collect":
+            self.setCoreNum()
         # print(self.partitionlsit)
         numOfpartitionlist = [int(v[0]) for v in self.partitionlsit]
         # print(numOfpartitionlist)
@@ -358,6 +390,42 @@ class para:
                 self.para["partition1"] = "skip"
                 return
         self.para["partition1"] = self.partitionlsit[int(partition1)][1]
+        
+    def print_param(self, name, values):
+        length = len(values)
+        min_length = 5  # 设置最小长度阈值
+        display_count = min(length, min_length)
+        if length > min_length:
+            value = str(values[0:min_length]).replace("]","...")
+            print(f"{name}:[{value},{len(values)}")
+        else:
+            value = str(values[:])
+            print(f"{name}:[{value}],{len(values)}")
+
+    def setCoreNum(self):
+        para=paraList1(self.para["L"],self.para["J"],self.para["D"],self.para["S"])
+        if self.para["task"] == "collect":
+            print(self.para["L"])
+            print(self.para["J"])
+            print(self.para["D"])
+            self.coreNum = len(para.L_num)*len(para.J_num)*len(para.D_num)
+            self.print_param("para.L_num", para.L_num)
+            self.print_param("para.J_num", para.J_num)
+            self.print_param("para.D_num", para.D_num)
+            print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} = {self.coreNum}")
+        if self.para["task"] == "submit":
+            print(self.para["L"])
+            print(self.para["J"])
+            print(self.para["D"])
+            print(self.para["S"])
+            self.coreNum = len(para.L_num)*len(para.J_num)*len(para.D_num)*len(para.S_num)
+        
+            self.print_param("para.L_num", para.L_num)
+            self.print_param("para.J_num", para.J_num)
+            self.print_param("para.D_num", para.D_num)
+            self.print_param("para.S_num", para.S_num)
+
+            print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} * {len(para.S_num)} = {self.coreNum}")
     def set_partition2(self):
         
         numOfpartitionlist = [int(v[0]) for v in self.partitionlsit]

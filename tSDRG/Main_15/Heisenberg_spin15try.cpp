@@ -24,6 +24,25 @@ using namespace std;
 const string group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random/tSDRG/Main_15";
 const string my_path = "/dicos_ui_home/aronton/tSDRG_random//tSDRG/Main_15";
 
+string get_first_five_lines(const string& raw) {
+    istringstream iss(raw);
+    string line;
+    vector<string> lines;
+    int count = 0;
+    
+    while (getline(iss, line) && count < 5) {
+        lines.push_back(line);
+        count++;
+    }
+
+    // 合併成一個字串
+    string result;
+    for (const auto& l : lines) {
+        result += l + ",";
+    }
+    return result;
+}
+
 bool safe_file_access(const std::string& filename, const std::string& mode, const std::string& message = "") {
     int flags = (mode == "r") ? O_RDONLY : O_WRONLY | O_CREAT | O_APPEND;
     int fd = open(filename.c_str(), flags, 0644);
@@ -97,9 +116,16 @@ struct datalist {
     string w_loc;
     string corr1;
     string corr2;
+    string message;
+    int L;
+    vector<vector<double>> corrV1;
+    vector<vector<double>> corrV2;
     vector<double> J_list;
     vector<double> energy;
-    string  message;
+    
+
+    datalist(int L_) : L(L_), corrV1(L_, vector<double>(L_)), corrV2(L_, vector<double>(L_)) {};
+
 };
 
 void writeDatalistToFile(const datalist& data, const std::string& filename) {
@@ -294,6 +320,13 @@ void etoe_corr(paralist& para, datalist& data, const vector<uni10::UniTensor<dou
     // ofstream foutS(file_nameS);
     fout1 << "x1,x2,corr" << endl;
     fout2 << "x1,x2,corr" << endl;
+    for(int i = 0; i <= para.L-1; i++)
+    {
+        for(int j = 0; j <= para.L-1; j++)
+        {
+            
+        }        
+    }
     int site1 = 0;
     int site2 = para.L-1;
 
@@ -654,7 +687,8 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     fout.close(); 
 
     data.message += ("Jlist : " + to_string(para.J_list[0]) + ", " + to_string(para.J_list[1]) + ", " + to_string(para.J_list[2]) \
-    + ", " + to_string(para.J_list[3]) + ", " + to_string(para.J_list[4]) + "\n");
+    + ", " + to_string(para.J_list[3]) + ", " + to_string(para.J_list[4]) \
+    + "..." + to_string(para.J_list[-2]) + "," + to_string(para.J_list[-1]) + "\n");
 
     fout.open(para.path["dimerization"]);
     if (!fout)
@@ -748,8 +782,9 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     fout.flush();
     fout.close(); 
 
-    data.message += ("Jlist : " + to_string(data.energy[0]) + ", " + to_string(data.energy[1]) + ", " + to_string(data.energy[2]) \
-    + ", " + to_string(data.energy[3]) + ", " + to_string(data.energy[4]) + "\n");
+    data.message += ("energy : " + to_string(data.energy[0]) + ", " + to_string(data.energy[1]) + ", " + to_string(data.energy[2]) \
+    + ", " + to_string(data.energy[3]) + ", " + to_string(data.energy[4])\
+    + "..." + to_string(data.energy[-2]) + "," + to_string(data.energy[-1]) + "\n");
 
     //string top1 = Decision_tree(w_loc, true);
 
@@ -767,11 +802,14 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     {
         bulk_corr(para, data, w_up, w_down, w_loc);
         SOP(para, data, w_up, w_down, w_loc);
+        data.message += data.message += "etoe_corr:" + get_first_five_lines(data.corr1) + "\n";
     }
     else
     {
         etoe_corr(para, data, w_up, w_down, w_loc);
+        data.message += data.message += "etoe_corr:" + get_first_five_lines(data.corr1) + "\n";
     }
+    
     // ofstream fout(para.path["ZL"]); 
     fout.open(para.path["ZL"]);    
     if (!fout)
@@ -786,7 +824,7 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     fout << setprecision(16) << data.ZL << endl;
     fout.flush();
     fout.close();
-
+    data.message += ("ZL:" + to_string(data.ZL) + "\n"); 
     cout << data.message + "\n\n";
 }
 
@@ -847,7 +885,7 @@ int main(int argc, char *argv[])
     {
     
         // datalist dlist = {0,0,0,0,0,"","","",{},{},""};
-        datalist dlist = {};
+        datalist dlist(L);;
         paralist plist = {};
         // plist.spin = S;
         // ofstream fin(filePath); 
