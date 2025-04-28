@@ -320,29 +320,59 @@ void etoe_corr(paralist& para, datalist& data, const vector<uni10::UniTensor<dou
     // ofstream foutS(file_nameS);
     fout1 << "x1,x2,corr" << endl;
     fout2 << "x1,x2,corr" << endl;
+    // for(int i = 0; i <= para.L-1; i++)
+    // {
+    //     for(int j = 0; j <= para.L-1; j++)
+    //     {
+    //         corr = Correlation_StSt(i, j, w_up, w_down, w_loc);
+    //         corr1 = corr12[i];
+    //         corr2 = corr12[j];
+    //         data.corrV2[i][j] = corr - corr1[i]*corr1[j];
+    //         data.corrV1[i][j] = corr;
+    //     }        
+    // }
+
     for(int i = 0; i <= para.L-1; i++)
     {
         for(int j = 0; j <= para.L-1; j++)
         {
-            
+            int site1 = i;
+            int site2 = j;
+            if(site2>site1)
+            {
+                corr = Correlation_StSt(site1, site2, w_up, w_down, w_loc);
+                corr1 = corr12[site1];
+                corr2 = corr12[site2];
+                data.corr1 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr) + ";");
+                data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
+                fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
+                fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
+                fout1.flush();
+                fout2.flush();
+                // foutS.flush();
+                fout1.close();
+                fout2.close();
+                // foutS.close();
+            }
         }        
     }
-    int site1 = 0;
-    int site2 = para.L-1;
 
-    corr = Correlation_StSt(site1, site2, w_up, w_down, w_loc);
-    corr1 = corr12[site1];
-    corr2 = corr12[site2];
-    data.corr1 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr) + ";");
-    data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
-    fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
-    fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
-    fout1.flush();
-    fout2.flush();
-    // foutS.flush();
-    fout1.close();
-    fout2.close();
-    // foutS.close();
+    // int site1 = 0;
+    // int site2 = para.L-1;
+
+    // corr = Correlation_StSt(site1, site2, w_up, w_down, w_loc);
+    // corr1 = corr12[site1];
+    // corr2 = corr12[site2];
+    // data.corr1 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr) + ";");
+    // data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
+    // fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
+    // fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
+    // fout1.flush();
+    // fout2.flush();
+    // // foutS.flush();
+    // fout1.close();
+    // fout2.close();
+    // // foutS.close();
 }
 
 
@@ -885,7 +915,7 @@ int main(int argc, char *argv[])
     {
     
         // datalist dlist = {0,0,0,0,0,"","","",{},{},""};
-        datalist dlist(L);;
+        datalist dlist(L);
         paralist plist = {};
         // plist.spin = S;
         // ofstream fin(filePath); 
