@@ -347,16 +347,20 @@ void etoe_corr(paralist& para, datalist& data, const vector<uni10::UniTensor<dou
                 data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
                 fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
                 fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
-                fout1.flush();
-                fout2.flush();
-                // foutS.flush();
-                fout1.close();
-                fout2.close();
+                // fout1.flush();
+                // fout2.flush();
+                // // foutS.flush();
+                // fout1.close();
+                // fout2.close();
                 // foutS.close();
             }
         }        
     }
-
+    fout1.flush();
+    fout2.flush();
+    // foutS.flush();
+    fout1.close();
+    fout2.close();
     // int site1 = 0;
     // int site2 = para.L-1;
 

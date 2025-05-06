@@ -60,15 +60,21 @@ for ((i=0; i<cols; i++)); do
     echo "Round${i} start $(date)"
     echo  # 輸出一行
     date
+    s1_combine=$((s1 - 1 + i * rows + 1))
+    # echo "s1_combine:${s1_combine}"
     for ((j=0; j<rows; j++)); do
         index=$((s1 - 1 + i * rows + j + 1))
         echo "srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} &"
         srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} &
     done
+    s2_combine=$((s1 - 1 + (i+1) * rows ))
+    # echo "s2_combine:${s2_combine}"
     wait
+    # echo "python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ""${FILE}"" ${s1_combine}"" ${s2_combine}"
+    python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py "${FILE}" "${s1_combine}" "${s2_combine}"
     echo  # 輸出一行
     echo "Round${i} finished $(date)"
 done
-python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ${FILE}
+# python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ${FILE}
 
 echo "Job finished $(date)"

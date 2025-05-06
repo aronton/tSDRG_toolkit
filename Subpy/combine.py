@@ -205,6 +205,7 @@ def ZLAverage(BC, J, D, L, P, m, phys):
                 context += fread(source,"ZL") + "\n"
             else:
                 continue
+            
 def Combine(BC, J, D, L, P, m, phys, s1, s2):
     folder = creatDir(BC, J, D, L, P, m, phys)
     name = creatName(BC, J, D, L, P, m, phys)
@@ -214,9 +215,83 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
     myTarPath = folder[2] + "/" + name[2]
     groupTarPath = folder[3] + "/" + name[3]
 
-    seedArray = list(range(s1,s2+1))
+    seedArray = list(range(s1, s2 + 1))
+    context = ""
 
-    context = f"{phys}\n"
+    for seed in seedArray:
+        groupSource = groupSourcePath.replace("s_re", str(seed))
+        mySource = mySourcePath.replace("s_re", str(seed))
+
+        if os.path.exists(groupSource) and os.path.exists(mySource):
+            if compare(groupSource, mySource, seed):
+                fcontext = fread(groupSource, phys)
+            else:
+                os.remove(groupSource)
+                shutil.copy(mySource, groupSource)
+                fcontext = fread(groupSource, phys)
+        elif os.path.exists(mySource):
+            os.makedirs(os.path.dirname(groupSource), exist_ok=True)
+            shutil.copy(mySource, groupSource)
+            os.remove(mySource)
+            fcontext = fread(groupSource, phys)
+        elif os.path.exists(groupSource):
+            fcontext = fread(groupSource, phys)
+        else:
+            continue
+
+        if fcontext is not None:
+            context += f"{seed}:{fcontext}\n"
+
+    if context != "":
+        os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
+        os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
+
+        if s1 == 1:
+            context = f"{phys}\n{context}"
+            print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+            with open(groupTarPath, "w") as f1, open(myTarPath, "w") as f2:
+                f1.write(context)
+                f2.write(context)
+        else:
+            print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+            with open(groupTarPath, "a") as f1, open(myTarPath, "a") as f2:
+                f1.write(context)
+                f2.write(context)            
+
+def average(BC, J, D, L, P, m, phys, s1, s2):
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+
+    mySourcePath = folder[0] + "/" + name[0]
+    groupSourcePath = folder[1] + "/" + name[1]
+    myTarPath = folder[2] + "/" + name[2]
+    groupTarPath = folder[3] + "/" + name[3]
+    
+    with open(f,"r") as a:
+        a = a.readlines()
+        if phys in a[0].strip():
+            del a[0]
+        for s in a:
+            s = s.strip()
+            del s[0]
+            s = s.replace(" ")
+            for corr in s:
+                if int(corr[1]) - int(corr[0]) == 
+
+        
+def Combine1(BC, J, D, L, P, m, phys, s1, s2):
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+
+    mySourcePath = folder[0] + "/" + name[0]
+    groupSourcePath = folder[1] + "/" + name[1]
+    myTarPath = folder[2] + "/" + name[2]
+    groupTarPath = folder[3] + "/" + name[3]
+
+    seedArray = list(range(s1,s2+1))
+    
+    context = ""
+    
     for seed in  seedArray:
         groupSource = groupSourcePath.replace("s_re",str(seed))
         mySource = mySourcePath.replace("s_re",str(seed))
@@ -249,14 +324,25 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
                     continue
                 context += f"{seed}:{fcontext}\n"              
 
-
-    if context != f"{phys}\n":
-        print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")
-        os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
-        os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
-        with open(groupTarPath, "w") as targetFile1, open(myTarPath, 'w') as targetFile2:
-            targetFile1.write(context)
-            targetFile2.write(context)
+    if context != "":
+        if s1 == 1:
+            context = f"{phys}\n{context}" 
+            print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")
+            os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
+            os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
+            with open(groupTarPath, "w") as targetFile1, open(myTarPath, 'w') as targetFile2:
+                targetFile1.write(context)
+                targetFile2.write(context)
+        else:
+            if os.path.exits(groupTarPath) and os.path.exits(myTarPath):
+                print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")
+                os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
+                os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
+                with open(groupTarPath, "a") as targetFile1, open(myTarPath, 'a') as targetFile2:
+                    targetFile1.write(context)
+                    targetFile2.write(context)   
+            else:
+                print(f"groupTarPath or myTarPath not exist")   
 
 def parameter_read_dict(filename):
     parameters = {}
@@ -335,12 +421,14 @@ if __name__ == "__main__":
     BC = parameterlist["BC"]
     Pdis = parameterlist["Pdis"]
     chi = "m" + str(parameterlist["chi"])
-    s1 = int(parameterlist["S"]["S1"])
-    s2 = int(parameterlist["S"]["S2"])
+    # s1 = int(parameterlist["S"]["S1"])
+    # s2 = int(parameterlist["S"]["S2"])
+    s1 = int(sys.argv[2])
+    s2 = int(sys.argv[3])
     for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
         for L in para.L_str:
             for J in para.J_str:
-                    arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, 1, s2))
+                    arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
     # s1 = 1
     # s2 = 30000
     # for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
