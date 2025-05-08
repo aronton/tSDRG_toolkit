@@ -271,12 +271,21 @@ def average(BC, J, D, L, P, m, phys, s1, s2):
         a = a.readlines()
         if phys in a[0].strip():
             del a[0]
+        metaContext = {}
         for s in a:
             s = s.strip()
+            sNum = int(s[0].split(":")[0])
+            if sNum not in metaContext:
+                metaContext[sNum] = {}
+                
             del s[0]
             s = s.replace(" ")
+            del s[0]
             for corr in s:
-                if int(corr[1]) - int(corr[0]) == 
+                if int(corr[1]) - int(corr[0]) not in dic:
+                    metaContext[sNum][int(corr[1]) - int(corr[0])] = [float(corr[2])]
+                else:
+                    metaContext[sNum][int(corr[1]) - int(corr[0])].append(float(corr[2]))
 
         
 def Combine1(BC, J, D, L, P, m, phys, s1, s2):
