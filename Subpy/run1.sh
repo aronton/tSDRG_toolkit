@@ -28,6 +28,25 @@ done < "$FILE"
 echo "parameterfile : $FILE"
 echo "The working directory : $PWD"
 
+# 檢查是否提供了檔案名稱作為參數
+if [ -z "$1" ]; then
+    echo "請提供要讀取的 .txt 檔案名稱作為參數。"
+    echo "用法：$0 檔案名稱.txt"
+    exit 1
+fi
+
+# 檢查指定的檔案是否存在
+if [ ! -f "$FILE" ]; then
+    echo "檔案 '$FILE' 不存在。"
+    exit 1
+fi
+
+# 逐行讀取並顯示檔案內容
+while IFS= read -r line || [ -n "$line" ]; do
+    echo "$line"
+done < "$FILE"
+
+
 # 確保變數都有值
 if [[ -z "$s1" || -z "$s2" || -z "$ds" ]]; then
     echo "錯誤: s1, s2, ds 讀取失敗！"
@@ -64,8 +83,8 @@ for ((i=0; i<cols; i++)); do
     # echo "s1_combine:${s1_combine}"
     for ((j=0; j<rows; j++)); do
         index=$((s1 - 1 + i * rows + j + 1))
-        echo "srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} &"
-        srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15try.exe ${FILE} ${index} ${index} &
+        echo "srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15250525.exe ${FILE} ${index} ${index} &"
+        srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15250525.exe ${FILE} ${index} ${index} &
     done
     s2_combine=$((s1 - 1 + (i+1) * rows ))
     # echo "s2_combine:${s2_combine}"

@@ -244,19 +244,19 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
 
     if context != "":
         os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
-        os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
+        # os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
 
         if s1 == 1:
             context = f"{phys}\n{context}"
             print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
             with open(groupTarPath, "w") as f1, open(myTarPath, "w") as f2:
                 f1.write(context)
-                f2.write(context)
+                # f2.write(context)
         else:
             print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
             with open(groupTarPath, "a") as f1, open(myTarPath, "a") as f2:
                 f1.write(context)
-                f2.write(context)            
+                # f2.write(context)            
 
 def average(BC, J, D, L, P, m, phys, s1, s2):
     folder = creatDir(BC, J, D, L, P, m, phys)
@@ -297,6 +297,19 @@ def Combine1(BC, J, D, L, P, m, phys, s1, s2):
     myTarPath = folder[2] + "/" + name[2]
     groupTarPath = folder[3] + "/" + name[3]
 
+    with open(myTarPath,"r") as my:
+        my = my.reads()
+    with open(groupTarPath,"r") as group:
+        group = group.reads()
+    originalContext = my.split("\n")
+    if my != group:
+        print("my!=group")
+    else:
+        my.split("\n")
+        start = originalContext[0].split(":")[0]
+        end = originalContext[-1].split(":")[0]
+    print(f"the original data is from {start} to {end}")
+    print(f"the new data is from {s1} to {s2}")
     seedArray = list(range(s1,s2+1))
     
     context = ""
@@ -334,6 +347,8 @@ def Combine1(BC, J, D, L, P, m, phys, s1, s2):
                 context += f"{seed}:{fcontext}\n"              
 
     if context != "":
+        if s1 > end:
+            context = originalContext
         if s1 == 1:
             context = f"{phys}\n{context}" 
             print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")

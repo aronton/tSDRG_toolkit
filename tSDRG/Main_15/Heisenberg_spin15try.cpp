@@ -43,6 +43,10 @@ string get_first_five_lines(const string& raw) {
     return result;
 }
 
+std::string get_first_100_chars(const std::string& raw) {
+    return raw.substr(0, 100);
+}
+
 bool safe_file_access(const std::string& filename, const std::string& mode, const std::string& message = "") {
     int flags = (mode == "r") ? O_RDONLY : O_WRONLY | O_CREAT | O_APPEND;
     int fd = open(filename.c_str(), flags, 0644);
@@ -332,30 +336,53 @@ void etoe_corr(paralist& para, datalist& data, const vector<uni10::UniTensor<dou
     //     }        
     // }
 
-    for(int i = 0; i <= para.L-1; i++)
+    for(int i = 1; i <= para.L-1; i++)
     {
-        for(int j = 0; j <= para.L-1; j++)
+
+        int site1 = 0;
+        int site2 = i;
+        if(site2>site1)
         {
-            int site1 = i;
-            int site2 = j;
-            if(site2>site1)
-            {
-                corr = Correlation_StSt(site1, site2, w_up, w_down, w_loc);
-                corr1 = corr12[site1];
-                corr2 = corr12[site2];
-                data.corr1 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr) + ";");
-                data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
-                fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
-                fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
-                // fout1.flush();
-                // fout2.flush();
-                // // foutS.flush();
-                // fout1.close();
-                // fout2.close();
-                // foutS.close();
-            }
-        }        
+            corr = Correlation_StSt(site1, site2, w_up, w_down, w_loc);
+            corr1 = corr12[site1];
+            corr2 = corr12[site2];
+            data.corr1 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr) + ";");
+            data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
+            fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
+            fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
+            // fout1.flush();
+            // fout2.flush();
+            // // foutS.flush();
+            // fout1.close();
+            // fout2.close();
+            // foutS.close();
+        }
     }
+
+    // for(int i = 0; i <= para.L-1; i++)
+    // {
+    //     for(int j = 0; j <= para.L-1; j++)
+    //     {
+    //         int site1 = i;
+    //         int site2 = j;
+    //         if(site2>site1)
+    //         {
+    //             corr = Correlation_StSt(site1, site2, w_up, w_down, w_loc);
+    //             corr1 = corr12[site1];
+    //             corr2 = corr12[site2];
+    //             data.corr1 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr) + ";");
+    //             data.corr2 += (to_string(site1) + "," + to_string(site2) + "," + to_string(corr - corr1*corr2)+ ";");
+    //             fout1 << setprecision(16) << site1 << "," << site2 << "," << corr << endl;
+    //             fout2 << setprecision(16) << site1 << "," << site2 << "," << corr - corr1*corr2 << endl;
+    //             // fout1.flush();
+    //             // fout2.flush();
+    //             // // foutS.flush();
+    //             // fout1.close();
+    //             // fout2.close();
+    //             // foutS.close();
+    //         }
+    //     }        
+    // }
     fout1.flush();
     fout2.flush();
     // foutS.flush();
@@ -639,17 +666,17 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     std::ostringstream oss;
     
     oss << "\n------------------------------sample: " << sample << "------------------------------\n";
-    oss << "J: " << para.J << "\n";
-    oss << "D: " << para.D << "\n";
-    oss << "L: " << para.L << "\n";
-    oss << "Pdis: " << Pdis << "\n";
+    // oss << "J: " << para.J << "\n";
+    // oss << "D: " << para.D << "\n";
+    // oss << "L: " << para.L << "\n";
+    // oss << "Pdis: " << Pdis << "\n";
     
-    oss << "Jstr: " << para.Jstr << "\n";
-    oss << "Dstr: " << para.Dstr << "\n";
-    oss << "Lstr: " << para.Lstr << "\n";
-    oss << "BC: " << BC << "\n";
-    oss << "chi: " << chi << "\n";
-    oss << "sample: " << sample << "\n";
+    // oss << "Jstr: " << para.Jstr << "\n";
+    // oss << "Dstr: " << para.Dstr << "\n";
+    // oss << "Lstr: " << para.Lstr << "\n";
+    // oss << "BC: " << BC << "\n";
+    // oss << "chi: " << chi << "\n";
+    // oss << "sample: " << sample << "\n";
     
     data.message = oss.str();
     // cout << data.message << endl;
@@ -836,12 +863,12 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     {
         bulk_corr(para, data, w_up, w_down, w_loc);
         SOP(para, data, w_up, w_down, w_loc);
-        data.message += data.message += "etoe_corr:" + get_first_five_lines(data.corr1) + "\n";
+        data.message += "etoe_corr:" + get_first_100_chars(data.corr1) + "\n";
     }
     else
     {
         etoe_corr(para, data, w_up, w_down, w_loc);
-        data.message += data.message += "etoe_corr:" + get_first_five_lines(data.corr1) + "\n";
+        data.message += "etoe_corr:" + get_first_100_chars(data.corr1) + "\n";
     }
     
     // ofstream fout(para.path["ZL"]); 
