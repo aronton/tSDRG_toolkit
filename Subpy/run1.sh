@@ -12,7 +12,7 @@ date
 FILE=$1
 outputPath="replace4"
 
-cd /dicos_ui_home/aronton/tSDRG_random/tSDRG/Main_15
+cd /home/aronton/tSDRG_random/tSDRG/Main_15
 # 讀取 eee 檔案並解析 s1, s2, ds
 while IFS=: read -r key value; do
     value=$(echo "$value" | xargs)  # 去除前後空白
@@ -27,6 +27,12 @@ done < "$FILE"
 
 echo "parameterfile : $FILE"
 echo "The working directory : $PWD"
+
+run_and_print() {
+    echo "[執行指令] $*"
+    "$@"
+}
+
 
 # 檢查是否提供了檔案名稱作為參數
 if [ -z "$1" ]; then
@@ -65,34 +71,34 @@ echo -e "$cols"
 # 初始化二維陣列（用一維陣列模擬）
 # array=()
 
-# # 填充二維陣列
-# for ((i=0; i<rows; i++)); do
-#     for ((j=0; j<cols; j++)); do
-#         # 計算一維索引
-#         index=$((i * cols + j))
-#         array[index]=$((i * cols + j + 1))  # 填充數據
-#     done
-# done
-
 # 輸出二維陣列的內容
 for ((i=0; i<cols; i++)); do
-    echo "Round${i} start $(date)"
-    echo  # 輸出一行
-    date
+    echo -e "Round${i} start $(date)\n\n"
     s1_combine=$((s1 - 1 + i * rows + 1))
     # echo "s1_combine:${s1_combine}"
+
+    start=$SECONDS
+
     for ((j=0; j<rows; j++)); do
         index=$((s1 - 1 + i * rows + j + 1))
-        echo "srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15250525.exe ${FILE} ${index} ${index} &"
-        srun --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin15250525.exe ${FILE} ${index} ${index} &
+        if [[ $j -eq 0 || $j -eq $((rows - 1)) ]]; then
+            run_and_print srun --ntasks=1 --nodes=1 --cpus-per-task=1  --cpu-bind=cores ./spin15_250619.exe ${FILE} ${index} ${index} &
+        else
+        # echo "srun --overlap --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin150531.exe ${FILE} ${index} ${index} &"
+            srun --ntasks=1 --nodes=1 --cpus-per-task=1 --cpu-bind=cores ./spin15_250619.exe ${FILE} ${index} ${index} &
+        fi 
     done
     s2_combine=$((s1 - 1 + (i+1) * rows ))
     # echo "s2_combine:${s2_combine}"
     wait
+    elapsed=$(( SECONDS - start ))
+    echo -e "Round${i} elapsed: $elapsed seconds\n\n"
+
     # echo "python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ""${FILE}"" ${s1_combine}"" ${s2_combine}"
-    python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py "${FILE}" "${s1_combine}" "${s2_combine}"
-    echo  # 輸出一行
-    echo "Round${i} finished $(date)"
+    run_and_print python /home/aronton/tSDRG_random/Subpy/combine.py "${FILE}" "${s1_combine}" "${s2_combine}"
+    run_and_print python /home/aronton/tSDRG_random/Subpy/ave.py "${FILE}" "${s1_combine}" "${s2_combine}"
+
+    echo "Round${i} finished $(date)\n\n"
 done
 # python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ${FILE}
 

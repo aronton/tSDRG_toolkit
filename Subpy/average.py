@@ -5,7 +5,7 @@ import sys
 import multiprocessing 
 import datetime
 import scriptCreator
-tSDRG_path="/dicos_ui_home/aronton/tSDRG_random"
+tSDRG_path="/home/aronton/tSDRG_random"
 
 # create namelist of task
 def submitPara(parameterlist, tSDRG_path):
@@ -33,8 +33,8 @@ def submitPara(parameterlist, tSDRG_path):
     s1 = parameterlist["S"]["S1"]
     s2 = parameterlist["S"]["S2"]
     ds = parameterlist["S"]["dS"]
-    print("S_num:",S_num)
-    print("S_str:",S_str)
+    # print("S_num:",S_num)
+    # print("S_str:",S_str)
 
     J_num = para.J_num
     J_p_num = para.J_p_num
@@ -121,7 +121,7 @@ def EditandSub(paraPath,script_path,output_path,jobName):
     
     replacements = {
         "replace1": jobName,
-        "replace2": "10",
+        "replace2": str(ds),
         "replace3": str(partition),
         "replace4": output_path
     }
@@ -145,28 +145,11 @@ def EditandSub(paraPath,script_path,output_path,jobName):
 
     print(f"替換完成，結果已儲存至 {script_path}")
 
-    # with open(script_path, "w") as file:
-    #     context = file.read()
-    #     context[1] = context[1].replace("replace1", "scopion" + str(partition))
-    #     context[3] = context[3].replace("replace2", jobName)
-    #     context[4] = context[4].replace("replace3", str(Ncore))
-    #     # taskdescription = ""
-    #     # # for 
-    #     # #     taskdescription = taskdescription + f"./Spin{Spin}.exe" 
-    #     context[5] = context[5].replace("replace4", output_path)
-    #     file.writelines(context)
-        
-    # submit_cmd_list = ["nohup sbatch ",script_path, output_path, ">/dev/null 2>& 1&"]
-
-    
-    # submit_cmd_list = ["nohup sbatch ",script_path, str(Spin),str(L),str(J),str(D)\
-    # ,str(BC),str(bondDim),str(Pdis),str(s1),str(s2),check_Or_Not,str(Ncore),tSDRG_path,output_path, ">/dev/null 2>& 1&"]
-
     submit_cmd = f"sbatch --ntasks={ds} {script_path} {paraPath} {output_path}"
     os.system(submit_cmd)    
 
 # organize task and parameter name into scriptpath
-def submit(parameterlist, tSDRG_path, tasklist):
+def submit(parameterlist, tSDRG_path, tasklist=None):
     print(parameterlist)
     p = parameterlist
     Ncore = parameterlist["Ncore"]
@@ -198,15 +181,13 @@ def submit(parameterlist, tSDRG_path, tasklist):
 
     # with open("run.sh", "r") as file:
     #     template = file.readlines()
-
-    
+    if tasklist == None:
+        tasklist, arg = submitPara(parameterlist, tSDRG_path)
     os.system( "cd " + tSDRG_path + "/tSDRG/Main_" + str(Spin))
     # script_path_tot = "" 
-    print(tasklist[1])
-    for i,jobName in enumerate(tasklist[0]):
-        print(jobName)
+    print(tasklist)
+    for i,jobName in enumerate(tasklist):
         elementlist = jobName.split("_")
-        
         L = elementlist[1]
         J = elementlist[2]
         D = elementlist[3]
@@ -259,29 +240,7 @@ def submit(parameterlist, tSDRG_path, tasklist):
                     file.writelines(s + "\n")
             file.writelines("ds:"+str(ds) + "\n")
         EditandSub(paraPath, script_path, output_path, jobName)
-                # print(element)
-    #     if os.path.exists(script_path):
-    #         pass
-    #         # print("exist : ", script_path)
-    #     else:
-    #         # print("not exist : ", script_path)
-    #         os.makedirs(script_path)
-            
-    #     if os.path.exists(output_path):
-    #         pass
-    #         # print("exist : ", output_path)
-    #     else:
-    #         # print("not exist : ", output_path)
-    #         os.makedirs(output_path)
-            
-    #     script_name = jobName + "_" + now_date + "_" + now_time
-    #     script_path = script_path + "/" + script_name + "_random.sh"
-    #     output_path = output_path + "/" + script_name + "_random.out"
-    #     context = template.copy()
-    #     script_path_tot = script_path_tot + script_path + "\n"
-    #     EditandSub(parameterlist,script_path,output_path,jobName,context)
-        
-    # print(script_path_tot)
+
 
 
 def find(parameterlist):
@@ -299,9 +258,9 @@ def find(parameterlist):
     partition = p["partition1"]      
     
     if partition != "skip":
-        job_list = os.popen("squeue " + "-u aronton " + "-p " + str(partition) + " -o \"%%10i %%30P %%130j %%15T\"")
+        job_list = os.popen("squeue " + "-u aronton " + "-p " + str(partition) + " -o \"%.5i %.10P %.110j %.10T %.10M\"")
     else:
-        job_list = os.popen("squeue " + "-u aronton " + " -o \"%%10i %%30P %%130j %%15T\"")
+        job_list = os.popen("squeue " + "-u aronton " + " -o \"%.5i %.10P %.110j %.10T %.10M\"")
     job_list = list(job_list)
 
     del job_list[0]
@@ -429,217 +388,82 @@ def Distribution(parameterlist):
     print("Pending:")  
     print(tot-run)      
 
-def collect(parameterlist, tSDRG_path):
+def getNodeStatus():
+    b = os.popen("sinfo -N -o \"%N %T %C %m %G\"")
+    b = list(b)
+    del b[0] 
+    b = [s.split(" ")[:3] for s in b]
 
-    p = parameterlist
-    Spin = parameterlist["Spin"]
-    Ncore = parameterlist["Ncore"]
-    partition = parameterlist["partition1"]
-    para=scriptCreator.paraList1(parameterlist["L"],parameterlist["J"],parameterlist["D"],parameterlist["S"])
-    L_num = para.L_num
-    L_p_num = para.L_p_num
-    L_str = para.L_str
-    L_p_str = para.L_p_str
+    for s in b:
+        s[-1] = s[-1].split("/")[1]
+
+    nodelist = {}
+    for s in b:
+        if s[0][:-2] not in nodelist:
+            nodelist[s[0][:-2]] = []
+        nodelist[s[0][:-2]].append(s)
+    return nodelist
+
+def getIdleNode():
+    nodelist = getNodeStatus()
+    return nodelist
+
+def showNodeStatus():
+    nodelist = getNodeStatus()
+    for key, value in nodelist.items():
+        print(f"Node: {key}")
+        for v in value:
+            print(v)
+    print("\n\n")
     
-
-    
-    print("L_num:",L_num)
-    print("L_p_num:",L_p_num)
-    print("L_str:",L_str)
-    print("L_p_str:",L_p_str)
-
-    # S_num = para.S_num
-    # S_str = para.S_str
-    # s1 = parameterlist["S"]["S1"]
-    # s2 = parameterlist["S"]["S2"]
-    # print("S_num:",S_num)
-    # print("S_str:",S_str)
-
-    J_num = para.J_num
-    J_p_num = para.J_p_num
-    J_str = para.J_str
-    J_p_str = para.J_p_str
-    J_s100 = para.J_s100
-    J_p_s100 = para.J_p_s100
-
-
-    print("J_num",J_num)
-    print("J_p_num",J_p_num)
-    print("J_str:",J_str)
-    print("J_p_str:",J_p_str)
-    print("J_s100:",J_s100)
-    print("J_p_s100:",J_p_s100)
-    
-    D_num = para.D_num
-    D_p_num = para.D_p_num
-    D_str = para.D_str
-    D_p_str = para.D_p_str
-    D_s100 = para.D_s100
-    D_p_s100 = para.D_p_s100
-
-    print("D_num:",D_num)
-    print("D_p_num:",D_p_num)
-    print("D_str:",D_str)
-    print("D_p_str:",D_p_str)
-    print("D_s100:",D_s100)
-    print("D_p_s100:",D_p_s100)
-
-    Spin=parameterlist["Spin"]
-    Pdis=parameterlist["Pdis"]
-    chi=parameterlist["chi"]
-    BC=parameterlist["BC"]
-    runlist = []
-    for L in L_str:
-        for J in J_str:
-            for D in D_str:
-                runlist.append((BC,J,D,L,Pdis,chi,"ZL"))
-
-    with multiprocessing.Pool(processes=int(Ncore)) as pool:
-        results = pool.starmap(collectData, runlist)
-    print(results)
-
-def collectData(parameterlist):
-    para=scriptCreator.paraList1(parameterlist["L"],parameterlist["J"],parameterlist["D"],parameterlist["S"])
-    BC = parameterlist["BC"]
-    Pdis = parameterlist["Pdis"]
-    chi = "m" + str(parameterlist["chi"])
-    s1 = int(parameterlist["S"]["S1"])
-    s2 = int(parameterlist["S"]["S2"])
-    for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
-        for L in para.L_str:
-            for J in para.J_str:
-                    arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
-    print(arg)         
-    print("---------------------col--------------------\n")
-    with multiprocessing.Pool(processes=len(s)*len(para.L_str)*len(para.J_str)) as pool:
-        results1 = pool.starmap(combine.Combine, arg)
-def collectDatatemp(BC, J, D, L, P, m, phys):
-    
-    sourcePathBase = tSDRG_path + "/tSDRG/Main_15/data_random/BC_re/J_re/D_re/L_re_P_re_m_re_s_re"
-    targetPathBase = tSDRG_path + "/tSDRG/Main_15/data_random/BC_re/J_re/D_re/target"
-
-    sourcePath = sourcePathBase.replace("BC_re", BC)
-    sourcePath = sourcePath.replace("J_re", J)
-    sourcePath = sourcePath.replace("D_re", D)
-
-    targetPath = targetPathBase.replace("BC_re", BC)
-    targetPath = targetPath.replace("J_re", J)
-    targetPath = targetPath.replace("D_re", D)
-
-    sourcePath = sourcePath.replace("L_re", L)
-    sourcePath = sourcePath.replace("P_re", f"P{P}")
-    sourcePath = sourcePath.replace("m_re", f"m{m}")
-    
-    if phys == "ZL":
-        quantity = "ZL"
-    elif phys == "energy":
-        quantity = "energy"
-    elif phys == "J_list":
-        quantity = "J_list.csv"
-    elif phys == "D_list":
-        quantity = "J_list.csv"
+def bestNode():
+    nodelist = getNodeStatus()
+    idleNode = []
+    for key, value in nodelist.items():
+        for v in value:
+            if v[1] == "idle":
+                idleNode.append(v[0])
+    if len(idleNode) == 0:
+        print("No idle node found.")
+        return None
     else:
-        quantity = "string.csv"
-        
-    targetName = "_".join([quantity, J, D, L, f"P{P}", f"m{m}", BC]) + ".txt"
-    targetPath = targetPath.replace("target", targetName)
+        print(f"Idle nodes: {idleNode}")
+        return idleNode[0]  # Return the first idle node found
     
-    record = 0
-    err = 1
-    # 產生 seed 陣列
-    seedArray = [i for i in range(20000)]
-    print(f"targetPath:{targetPath}")
-    # 開啟輸出檔案
-    with open(targetPath, 'w') as fTargert:
-        line = "{quantity}\n"
-        for seed in seedArray:
-            newPath = os.path.join(sourcePath.replace("s_re", f"{seed+1}"), f"{quantity}.csv")
-            if seed == seedArray[0]:
-                print(newPath)
 
-            
-            # 嘗試開啟檔案
-            try:
-                with open(newPath, 'r') as fSource:
-                    data = fSource.readlines()
-                    value = data[-1].strip()  # 去除換行符號並轉 float
-                    print(f"original {quantity}:{value}")
-                    line = line + str(seed+1) + ",  " + quantity + "\n"
-                    # 寫入結果到 ZL.txt
-                    record = seed+1
-                    # 存入陣列
-                    # a[seed] = ZL
-            except FileNotFoundError:
-                if err == 1:
-                    err = seed+1
-
-                print(f"檔案不存在: {newPath}")
-            if seed == seedArray[-1]:
-                print(newPath)
-        fTargert.write(line)
-    return (record, err)
-
-def checkAndDelete(BC, J, D, L, P, m, phys):
-    sourcePathBase = tSDRG_path + "/tSDRG/Main_15/data_random/BC_re/J_re/D_re/L_re_P_re_m_re_s_re"
-    targetPathBase = tSDRG_path + "/tSDRG/Main_15/data_random/BC_re/J_re/D_re/target"
-
-    sourcePath = sourcePathBase.replace("BC_re", BC)
-    sourcePath = sourcePath.replace("J_re", J)
-    sourcePath = sourcePath.replace("D_re", D)
-
-    targetPath = targetPathBase.replace("BC_re", BC)
-    targetPath = targetPath.replace("J_re", J)
-    targetPath = targetPath.replace("D_re", D)
-
-    sourcePath = sourcePath.replace("L_re", L)
-    sourcePath = sourcePath.replace("P_re", f"P{P}")
-    sourcePath = sourcePath.replace("m_re", f"m{m}")
-    quantity = phys
-    targetName = "_".join([quantity, J, D, L, f"P{P}", f"m{m}", BC]) + ".txt"
-    targetPath = targetPath.replace("target", targetName)    
-    with open(targetPath, 'w') as fTargert:
-        line = "{quantity}\n"
-        for seed in seedArray:
-            newPath = os.path.join(sourcePath.replace("s_re", f"{seed+1}"), f"{quantity}.csv")
-            if seed == seedArray[0]:
-                print(newPath)
-
-            
-            # 嘗試開啟檔案
-            try:
-                with open(newPath, 'r') as fSource:
-                    data = fSource.readlines()
-                    value = data[-1].strip()  # 去除換行符號並轉 float
-                    print(f"original {quantity}:{value}")
-                    line = line + str(seed+1) + ",  " + quantity + "\n"
-                    # 寫入結果到 ZL.txt
-                    record = seed+1
-                    # 存入陣列
-                    # a[seed] = ZL
-            except FileNotFoundError:
-                if err == 1:
-                    err = seed+1
-
-                print(f"檔案不存在: {newPath}")
-            if seed == seedArray[-1]:
-                print(newPath)
-        fTargert.write(line)    
-    return
-
-def showPartition():
+def getPartitionStatus():
     # os.system('sinfo -o "%P %C"')
     partitionlsit = os.popen('sinfo -o "%P %C"')
     partitionlsit = list(partitionlsit)
     del partitionlsit[0]
+    
     partitionlsit = [str(v.replace("\n","")) for v in partitionlsit]
 
     partitionlsit = [v.split(" ") for v in partitionlsit]
-    partitionlsit = [(str(i),v[0],int(v[1].split("/")[1])) for i,v in enumerate(partitionlsit)]
     
-    partitionlsit = [v for v in partitionlsit if "v100" not in v[0]]
-    partitionlsit = [v for v in partitionlsit if "a100" not in v[0]]
+    partitionlsit = [(i+1,v[0],int(v[1].split("/")[1])) for i,v in enumerate(partitionlsit)]
+    # print(f"partitionlsit:{partitionlsit}")
+    partitionDict = {}
+    for key, value in enumerate(partitionlsit):
+        partitionDict[value[0]] = [str(value[1]), str(value[2])]
+    # print(f"partitionDict:{partitionDict}")
+    # partitionlsit = [v for v in partitionlsit if "v100" not in v[0]]
+    # partitionlsit = [v for v in partitionlsit if "a100" not in v[0]]
+    
     # [print(v[0]) for v in partitionlsit]
-    return partitionlsit
+    return partitionDict
+
+def showPartitionStatus():
+    nodelist = getNodeStatus()
+    for key, value in nodelist.items():
+        status = f"partition : {key}:\n"
+        for i, v in enumerate(value):
+            if v[1] == "idle":
+                status += f"{v[0]} {v[1]} {v[2]};\n"
+            else:
+                pass
+        print(status)
+    print("\n\n")
 
 def main():
     
@@ -674,39 +498,17 @@ def main():
     ex : 15(Spin) 64(L) 1.1(J) 0.1(D) 10(Pdis) 40(chi) 1(initialSampleNumber) 20(finalSampleNumber) 5(sampleDelta), Y(check_Or_Not)\n")
 
     # task = sys.argv[1]
-    partitionlsit = showPartition()
-    [print(v) for v in partitionlsit]
-    a = scriptCreator.para(task,partitionlsit)
+    nodeDict =getNodeStatus()
+    partitionDict = getPartitionStatus()
+
+    showPartitionStatus()
+    # [print(v) for v in partitionDict]
+    # for key, value in partitionDict.items():
+    #     print(f"{value[0]} : {value[1]}")
+    a = scriptCreator.para(task, partitionDict)
     
     a.keyin()
     parameterlist = a.para
-    print(parameterlist)
-    
-    # i = 2
-    # for key1,value1 in parameterlist.items():
-    #     if type(value1) != dict:
-    #         try:
-    #             if sys.argv[i] == "skip":
-    #                 parameterlist[key1] = ""
-    #             else:
-    #                 parameterlist[key1]=sys.argv[i]
-    #         except IndexError:
-    #             parameterlist[key1]=""
-    #         i = i + 1
-    #     else:
-    #         for key2,value2 in value1.items():
-    #             try:
-    #                 if sys.argv[i] == "skip":
-    #                     parameterlist[key1][key2] = ""
-    #                 else:
-    #                     parameterlist[key1][key2]=sys.argv[i]
-    #             except IndexError:
-    #                 parameterlist[key1][key2]=""
-    #             i = i + 1
-                
-    if task == "change":
-        psubmit = a.resubmit
-        pcancel = a.cancel
 
     print(parameterlist,"\n")
     for s in parameterlist:
@@ -714,31 +516,39 @@ def main():
 
     if task == "submit" or task == "a":
         tasklist = submitPara(parameterlist, tSDRG_path)
-        submit(parameterlist, tSDRG_path, tasklist)
+        submit(parameterlist, tSDRG_path)
     elif task == "show" or task == "b":
         show(parameterlist)
         Distribution(parameterlist)
     elif task == "cancel" or task == "c":
         cancel(parameterlist)
     elif task == "change" or task == "d":
-        for key,value in parameterlist.items():
-            if key in psubmit and key != "partition1":
-                psubmit[key] = value
-            if key in pcancel and key != "partition1":
-                pcancel[key] = value
-        print(parameterlist)
-        pcancel["partition1"] = parameterlist["partition1"] 
-        psubmit["partition1"] = parameterlist["partition2"]
-        tasklist=get(pcancel)
-        cancel(pcancel)
-        submit(psubmit, tSDRG_path, tasklist)
+        psubmit = scriptCreator.para("submit", partitionDict)
+        pcancel = scriptCreator.para("cancel", partitionDict)
+
+        for key,value in psubmit.para.items():
+            if key == "partition1" or key == "task":
+                psubmit.para[key] = parameterlist["partition2"]
+                psubmit.para["task"] = "submit"
+            else:
+                psubmit.para[key] = parameterlist[key]
+        for key,value in pcancel.para.items():
+            if key == "partition1" or key == "task":
+                pcancel.para[key] = parameterlist["partition1"]
+                pcancel.para["task"] = "cancel"
+            else:
+                pcancel.para[key] = parameterlist[key]
+        
+        tasklist=get(pcancel.para)
+        cancel(pcancel.para)
+        submit(psubmit.para, tSDRG_path, tasklist)
     elif task == "dis" or task == "e":
         Distribution(parameterlist)
     elif task == "check" or task == "f":
         Distribution(parameterlist)
     elif task == "collect" or task == "g":
         tasklist = submitPara(parameterlist, tSDRG_path)
-        submit(parameterlist, tSDRG_path, tasklist)
+        submit(parameterlist, tSDRG_path)
     return
 
 if __name__ == '__main__' :

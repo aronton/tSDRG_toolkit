@@ -4,6 +4,7 @@
 #include <random>
 #include <iomanip>
 #include <cmath>
+#include <chrono>
 #include <ctime>
 #include <algorithm>
 #include <uni10.hpp>
@@ -22,7 +23,7 @@
 using namespace std;
 
 const string group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random/tSDRG/Main_15";
-const string my_path = "/dicos_ui_home/aronton/tSDRG_random//tSDRG/Main_15";
+const string my_path = "/home/aronton/tSDRG_random//tSDRG/Main_15";
 
 string get_first_five_lines(const string& raw) {
     istringstream iss(raw);
@@ -126,6 +127,9 @@ struct datalist {
     vector<vector<double>> corrV2;
     vector<double> J_list;
     vector<double> energy;
+    std::chrono::duration<double> treeTime;
+    std::chrono::duration<double> corrTime;
+    std::chrono::duration<double> zlTime;
     
 
     datalist(int L_) : L(L_), corrV1(L_, vector<double>(L_)), corrV2(L_, vector<double>(L_)) {};
@@ -168,7 +172,7 @@ void writeDatalistToFile(const datalist& data, const std::string& filename) {
 void createPath(paralist& para, datalist& data)
 {
     std::string file_name = para.Lstr + "_P" + to_string(para.Pdis) + "_m" + to_string(para.chi) + "_" + to_string(para.sample);
-    std::string base_path = group_path + "/data_random/" + para.BC + "/" + para.Jstr + "/" + para.Dstr + "/" + file_name + "/";
+    std::string base_path = my_path + "/data_random/" + para.BC + "/" + para.Jstr + "/" + para.Dstr + "/" + file_name + "/";
 
     para.path["dir"] = base_path;
     para.path["ZL"] = base_path + file_name + "_ZL.txt";
@@ -520,140 +524,12 @@ void parameterSet(paralist& plist, datalist& data, const vector<pair<string, str
             cerr << "[ERROR] Failed to parse (" << para << ", " << value << "): " << e.what() << endl;
         }
     }
-
-    // Debug summary
-    // std::ostringstream oss;
-    // oss << "\n[SUMMARY] plist content:\n"
-    //     << "L = " << plist.L << " (" << plist.Lstr << "), "
-    //     << "chi = " << plist.chi << ", "
-    //     << "BC = " << plist.BC << ", "
-    //     << "Pdis = " << plist.Pdis << "\n"
-    //     << "J = " << plist.J << " (" << plist.Jstr << "), "
-    //     << "D = " << plist.D << " (" << plist.Dstr << ")\n";
-    
-    // data.message += oss.str();
-
-
-    // data.message += (
-    //     "\n[SUMMARY] plist content:\n" +             // 換行 + 標題
-    //     "L = " + plist.L +                           // 系統長度
-    //     " (" + plist.Lstr + "), " +                 // 長度字串描述
-    //     "chi = " + plist.chi + ", " +                // bond dimension
-    //     "BC = " + plist.BC +                         // boundary condition
-    //     ", " +
-    //     "Pdis = " + plist.Pdis + "\n" +              // 無序參數（如亂度）
-    //     "J = " + plist.J +                           // 耦合常數
-    //     " (" + plist.Jstr + "), " +                 // J 的描述
-    //     "D = " + plist.D +                           // 單軸向異性
-    //     " (" + plist.Dstr + ")\n"                    // D 的描述
-    // );
 }
 
-// void parameterSet(paralist& plist, vector<pair<string, string>> parameter)
-// {
 
-//     int L;                      // system size
-//     int chi;                    // keep state of isometry
-//     string BC;                  // boundary condition
-//     int Pdis;                   // model of random variable disturbution
-//     double Jdis;                // J-coupling disorder strength
-//     double Dim;			        // Dimerization constant
-
-//     for(int i = 0; i<parameter.size(); i++)
-//     {
-//         string para = parameter[i].first;
-//         string value = parameter[i].second;
-//         // cout << parameter[i].first << endl;
-//         cout << "para:" << para << endl;
-//         cout << "value:" << value << endl;
-
-//         if(para=="L")
-//         {
-//             int L = std::stoi(value);
-//             plist.L = L;
-//             plist.Lstr = "L" + std::to_string(L);
-//             std::cout << "L "  << plist.L << std::endl;
-//         }
-//         else if(para == "J")
-//         {
-//             double Jdis = std::stod(value);
-//             plist.J = Jdis;
-            
-//             std::ostringstream oss;
-//             oss << std::fixed << std::setprecision(2) << Jdis;
-//             std::string str = oss.str();
-//             str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
-            
-//             plist.Jstr = "Jdis" + str;
-
-//             // Jdis = stod(value);
-//             // plist.J = Jdis;
-//             // string str = to_string(round(value,2));
-//             // plist.Jstr = "Jdis" + Jstr.erase(std::remove(str.begin(), str.end(), '.'), str.end());
-//             std::cout << "Jdis " << plist.J << std::endl;
-//         }
-//         else if(para == "D")
-//         {
-//             double Dim = std::stod(value);
-//             plist.D = Dim;
-            
-//             std::ostringstream oss;
-//             oss << std::fixed << std::setprecision(2) << Dim;
-//             std::string str = oss.str();
-//             str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
-            
-//             plist.Dstr = "Dim" + str;
-//             // Dim = stod(value);
-//             // plist.D = Dim;
-//             // string str = to_string(round(value,2));
-//             // plist.Dstr = "Dim" + str.erase(std::remove(str.begin(), str.end(), '.'), str.end());
-//             std::cout << "Dim " << plist.D << std::endl;
-//         }
-//         else if(para == "BC")
-//         {
-//             BC = value;
-//             plist.BC = BC;
-//             std::cout << "BC:" << plist.BC << std::endl;
-//         }
-//         else if(para == "Pdis")
-//         {
-//             Pdis = stoi(value);
-//             plist.Pdis = Pdis;
-//             std::cout << "Pdis:" << plist.Pdis << std::endl;
-//         }
-//         else if(para == "chi")
-//         {
-//             chi = stoi(value);
-//             plist.chi = chi;
-//             std::cout<< "chi " << plist.chi << std::endl;
-//         }
-//                 // default:
-//                 // std::cout << "Invalid day" << std::endl;
-//         cout << "i:" << i << endl;
-//     }
-//     cout << "yy\n";
-
-// }
-
-
-// double dimer(double odd, double even)
-// {
-//     double dimer = (abs(even) - abs(odd)) /(abs(even) + abs(odd));
-//     return dimer;
-// }
 
 void tSDRG_XXZ1(paralist& para, datalist& data)
 {
-
-    // std::cout << "[DEBUG] Entered tSDRG_XXZ1()" << std::endl;
-    // std::cout << "[DEBUG] para.sample = " << para.sample << std::endl;
-    // std::cout << "[DEBUG] para.spin = " << para.spin << std::endl;
-    // std::cout << "[DEBUG] para.L = " << para.L << std::endl;
-    // std::cout << "[DEBUG] para.J = " << para.J << ", Jstr = " << para.Jstr << std::endl;
-    // std::cout << "[DEBUG] para.D = " << para.D << ", Dstr = " << para.Dstr << std::endl;
-    // std::cout << "[DEBUG] para.BC = " << para.BC << std::endl;
-
-
 
     int sample = para.sample;  
     int L = para.L;                      // system size
@@ -666,23 +542,10 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     std::ostringstream oss;
     
     oss << "\n------------------------------sample: " << sample << "------------------------------\n";
-    // oss << "J: " << para.J << "\n";
-    // oss << "D: " << para.D << "\n";
-    // oss << "L: " << para.L << "\n";
-    // oss << "Pdis: " << Pdis << "\n";
-    
-    // oss << "Jstr: " << para.Jstr << "\n";
-    // oss << "Dstr: " << para.Dstr << "\n";
-    // oss << "Lstr: " << para.Lstr << "\n";
-    // oss << "BC: " << BC << "\n";
-    // oss << "chi: " << chi << "\n";
-    // oss << "sample: " << sample << "\n";
+
     
     data.message = oss.str();
-    // cout << data.message << endl;
 
-    // mt19937 genRandom(seed);    // use mersenne twister and seed is rd.
-    // mt19937 genFixed(seed);     // use mersenne twister and seed is fixed!
     if(BC == "PBC")
     {
         for(int i = 0; i<L;i++)
@@ -697,9 +560,7 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
             para.J_list.push_back(0);
         }
     }
-    // double s_tempt;
-    // do
-    // {
+
     
 
     Jlist(para,data);
@@ -759,7 +620,6 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
         throw runtime_error(err.str());
     }
     fout << "dimerization" << endl;
-    // double ZL = Correlation_ZL(w_up, w_down, w_loc);
     fout << setprecision(16) << para.dimerization << endl;
     fout.flush();
     fout.close();
@@ -770,18 +630,7 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     vector<MPO> MPO_chain;
     MPO_chain = generate_MPO_chain(L, "XXZ_" + BC, S, para.J_list, 1.0, 0);
     
-    // data.message += ("\n" + para.path["ZL"]);
-    // data.message += ("\n" + para.path["corr1"]);
-    // data.message += ("\n" + para.path["corr2"]);
-    // data.message += ("\n" + para.path["energy"]);
-    // data.message += ("\n" + para.path["J_list"]);
-    // data.message += ("\n" + para.path["string"]);
-    // data.message += ("\n" + para.path["w_loc"]);
-    // data.message += ("\n" + para.path["seed"]);
-    // data.message += ("\n" + path["ZL"])
-    // data.message += ("\n" + path["ZL"])
-    // data.message += ("\n" + path["ZL"])
-    /// return: TTN(w_up and w_loc) and energy spectrum of top tensor
+
     vector<uni10::UniTensor<double> > w_up;      // w_up is isometry tensor = VT
     vector<int> w_loc;    
     // vector<double> rgJlist = data.rgJlist;
@@ -793,8 +642,18 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     bool info = 1;                               // True; if tSDRG can not find non-zero gap, info return 0, and stop this random seed.
     bool save_RG_info = 0;                       // save gaps at RG stage 
     // cout << data.message;
+
+    /*tSDRG*/
+
+    auto start = std::chrono::steady_clock::now();
+
     tSDRG(MPO_chain, data.J_list, data.energy, w_up, w_loc, chi, to_string(J), Pdis, sample, save_RG_info, info);
-    // std::cout << "[DEBUG] after setting message" << std::endl;
+
+    auto end = std::chrono::steady_clock::now();
+
+
+    data.treeTime = end - start;
+
     /// check info if can not RG_J
     fout.open(para.path["die"]);
     if (info == 0)
@@ -810,9 +669,9 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     {   
         data.message += ("\nfinish in " + para.path["dir"] + "\n");
     }
+     data.message += ("tree_time: " + to_string(data.treeTime.count()) + " seconds\n");
 
-
-    // ofstream fout(para.path["energy"]);
+    /*energy save*/
     fout.open(para.path["energy"]);
     if (!fout)
     {
@@ -828,6 +687,8 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     fout.flush();
     fout.close(); 
 
+
+    /*w_loc*/
     fout.open(para.path["w_loc"]);
     if (!fout)
     {
@@ -849,7 +710,7 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
 
     //string top1 = Decision_tree(w_loc, true);
 
-    /// create isometry of other part
+    /*create isometry of other part to calculate physical quantity*/
     vector<uni10::UniTensor<double> > w_down;    // w_down
     uni10::UniTensor<double> kara;
     w_down.assign(L-1, kara);
@@ -859,19 +720,33 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
         uni10::Permute(w_down[i], {-3, -1, 1}, 2, uni10::INPLACE);
     }
 
+    /*Correlation calculation ( include OBC and PBC )*/
+
+    start = std::chrono::steady_clock::now();
+
     if(para.BC == "PBC")
     {
         bulk_corr(para, data, w_up, w_down, w_loc);
         SOP(para, data, w_up, w_down, w_loc);
-        data.message += "etoe_corr:" + get_first_100_chars(data.corr1) + "\n";
+        data.message += "bulk_corr:" + get_first_100_chars(data.corr1) + "\n";
     }
     else
     {
         etoe_corr(para, data, w_up, w_down, w_loc);
         data.message += "etoe_corr:" + get_first_100_chars(data.corr1) + "\n";
     }
-    
-    // ofstream fout(para.path["ZL"]); 
+
+    end = std::chrono::steady_clock::now();
+
+
+    data.corrTime = end - start;
+
+    data.message += ("correlation_time: " + to_string(data.corrTime.count()) + " seconds\n");
+
+    /*ZL calculation*/
+
+    start = std::chrono::steady_clock::now();
+
     fout.open(para.path["ZL"]);    
     if (!fout)
     {
@@ -879,6 +754,11 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
         err << "Error: Fail to save (maybe need mkdir " << para.path["ZL"] << ")";
         throw runtime_error(err.str());
     }
+
+    end = std::chrono::steady_clock::now();
+
+    data.zlTime = end - start;
+
     fout << "ZL" << endl;
     double ZL = Correlation_ZL(w_up, w_down, w_loc);
     data.ZL = ZL;
@@ -886,6 +766,9 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     fout.flush();
     fout.close();
     data.message += ("ZL:" + to_string(data.ZL) + "\n"); 
+    data.message += ("ZL_time: " + to_string(data.zlTime.count()) + " seconds\n");
+    /*messenage out*/
+
     cout << data.message + "\n\n";
 }
 
@@ -973,180 +856,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
-
-
-// int main(int argc, char *argv[])
-// {
-//     int L;                      // system size
-//     int chi;                    // keep state of isometry
-//     string BC;                  // boundary condition
-//     int Pdis;                   // model of random variable disturbution
-//     double Jdis;                // J-coupling disorder strength
-//     double Dim;			        // Dimerization constant
-//     int seed1;                  // random seed number in order to repeat data
-//     int seed2;                  // random seed number in order to repeat data
-//     double S      = 1.5;        // spin dimension
-//     double Jz     = 1.0;        // XXZ model
-//     double h      = 0.0;        // XXZ model
-//     string filePath;
-//     stringstream(argv[1]) >> filePath;
-//     paralist plist;
-//     datalist dlist;
-//     // ofstream fin(filePath); 
-//     vector<pair<string, string>> parameter;
-//     parameterRead(filePath, parameter);
-//     cout << filePath << "\n";
-//     // for(int i=0; i < parameter.size(); i++)
-//     // {
-//     //     cout << parameter[i].first << ", " << parameter[i].second << "\n";
-//     // }
-//     // cout << parameter[0].second;
-//     for(int i = 0; i<parameter.size(); i++)
-//     {
-//         string para = parameter[i].first;
-//         string value = parameter[i].second;
-//         // cout << parameter[i].first << endl;
-//         // cout << para << endl;
-//         // cout << value << endl;
-
-//         if(para=="L")
-//         {
-//             L = stoi(value);
-//             plist.L = L;
-//             // std::cout << "L:"  << plist.L << std::endl;
-//         }
-//         else if(para == "J")
-//         {
-//             Jdis = stod(value);
-//             plist.J = Jdis;
-//             // std::cout << "Jdis:" << plist.J << std::endl;
-//         }
-//         else if(para == "D")
-//         {
-//             Dim = stod(value);
-//             plist.D = Dim;
-//             // std::cout << "Dim:" << plist.D << std::endl;
-//         }
-//         else if(para == "BC")
-//         {
-//             BC = value;
-//             plist.BC = BC;
-//             // std::cout << "BC:" << plist.BC << std::endl;
-//         }
-//         else if(para == "Pdis")
-//         {
-//             Pdis = stoi(value);
-//             plist.Pdis = Pdis;
-//             // std::cout << "Pdis:" << plist.Pdis << std::endl;
-//         }
-//         else if(para == "chi")
-//         {
-//             chi = stoi(value);
-//             plist.chi = chi;
-//             // std::cout<< "chi:" << plist.chi << std::endl;
-//         }
-//                 // default:
-//                 // std::cout << "Invalid day" << std::endl;
-//     }
-//     plist.spin = S;
-//     seed1 = stoi(argv[2]);
-//     seed2 = stoi(argv[3]);
-//     // plist.s1 = seed1;
-//     // plist.s2 = seed2;
-//     // std::cout << "seed1:" << seed1 << std::endl;
-//     // std::cout << "seed2:" << seed2 << std::endl;
-//     // cout << plist.spin << "_" << plist.L << "_" << plist.J << "_" << plist.D; 
-//     for (int i = seed1; i <= seed2; i++) 
-//     {
-//         plist.sample = i;
-//         // cout << "plist.sample:" <<plist.sample;
-//         tSDRG_XXZ(plist, dlist);
-//         // cout << "Process " << world_rank << " is handling iteration " << i << endl;
-//     }
-
-//     return 0;
-// }
-
-
-    // tSDRG_XXZ1(plist, dlist);
-    // }
-    // if (!fout)
-    // {
-    //     ostringstream err;
-    //     err << "Error: Fail to open (maybe need mkdir " << filePath << ")";
-    //     throw runtime_error(err.str());
-    //     return 1;
-    // }
-    // if (argc != 1)
-    // {
-    //     stringstream(argv[1]) >> L;
-    //     stringstream(argv[2]) >> chi;
-    //     stringstream(argv[3]) >> Pdis;
-    //     stringstream(argv[4]) >> Jdis;
-	//     stringstream(argv[5]) >> Dim;
-    //     BC = argv[6];
-    //     stringstream(argv[7]) >> seed1;
-    //     stringstream(argv[8]) >> seed2;
-    // }
-    // else
-    // {
-    //     errMsg(argv[0]);
-    //     return 1;
-    // }
-
-    // MPI_Init(&argc, &argv); // 初始化 MPI
-    
-    // int world_size, world_rank;
-    // MPI_Comm_size(MPI_COMM_WORLD, &world_size); // 獲取總進程數
-    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank); // 獲取當前進程的 rank
-
-    // int N = 10;  // 假設我們的迴圈範圍是 0 到 N-1
-    // int work_per_process = N / world_size;  // 每個進程處理的迭代次數
-
-    // // 確保每個進程的起始與結束範圍正確
-    // int start = world_rank * work_per_process;
-    // int end = (world_rank + 1) * work_per_process;
-    
-    // if (world_rank == world_size - 1) {
-    //     end = N;  // 最後一個進程可能會多處理一些，確保處理到 N
-    // }
-    // for (int i = seed1; i < seed2; i++) {
-    //     tSDRG1_XXZ(&para, &data);
-    //     // cout << "Process " << world_rank << " is handling iteration " << i << endl;
-    // }
-    // 每個進程負責自己的範圍的迴圈
-    // for (int i = seed1; i < seed2; i++) {
-    //     tSDRG_XXZ(L, chi, Pdis, Jdis, BC, S, Jz, Dim, h, i);
-    //     // cout << "Process " << world_rank << " is handling iteration " << i << endl;
-    // }
-
-    // MPI_Finalize(); // 結束 MPI
-
-
-    // int world_size, world_rank;
-    
-    // MPI_Init(&argc, &argv);  // ✅ 初始化 MPI
-
-    // MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-
-    // cout << "world_rank: " << world_rank << " / " << world_size << endl;
-
-    // MPI_Finalize();  // ✅ 結束 MPI
-
-
-    // int world_size, world_rank;
-    // MPI_Init(&argc, &argv);
-
-    
-    // MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    // MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-
-    // cout << "world_rank: " << world_rank << endl;
-    // for (int Jseed = seed1; Jseed <= seed2; Jseed++) {
-    //     // cout << "world_rank: " << world_rank << " Jseed: " << Jseed << endl;
-    //     tSDRG_XXZ(L, chi, Pdis, Jdis, BC, S, Jz, Dim, h, Jseed);
-    // }
-
-    // MPI_Finalize();

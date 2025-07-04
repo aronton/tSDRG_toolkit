@@ -2,6 +2,7 @@ import os
 import math
 import time
 import timeit
+import numpy as np
 import sys
 import tarfile
 import datetime
@@ -11,9 +12,9 @@ from pathlib import Path
 import shutil
 
 
-tSDRG_path = "/dicos_ui_home/aronton/tSDRG_random"
-group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
-
+tSDRG_path = "/home/aronton/tSDRG_random"
+# group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
+group_path = "/home/aronton/tSDRG_random"
     
 sourcelist = {"ZL":"ZL.csv", "energy":"energy.csv", "seed":"s_re_seed.csv",\
     "corr1":"_".join(["L_re","P_re","m_re","s_re","corr1.csv"]), "corr2":"_".join(["L_re","P_re","m_re","s_re","corr2.csv"]),\
@@ -42,30 +43,6 @@ tarlist = {
     "seed":"_".join(["seed","L_re","P_re","m_re.txt"]),
     "dimerization":"_".join(["dimerization","L_re","P_re","m_re.txt"])
     }
-
-
-# collist = {
-#     "ZL":"_".join(["ZL","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "energy":"_".join(["energy","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "corr1":"_".join(["corr1","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "corr2":"_".join(["corr2","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "ZLI":"_".join(["ZLI","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "ZLC":"_".join(["ZLC","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "w_loc":"_".join(["w_loc","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "J_list":"_".join(["J_list","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "string":"_".join(["string","L_re","P_re","m_re","J_re","D_re","s_re.txt"]),\
-#     "seed":"_".join(["seed","L_re","P_re","m_re","s_re.txt"]),
-#     "dimerization":"_".join(["dimerization","L_re","P_re","m_re","s_re.txt"])
-#     }
-
-def parameterRead(filePath):
-    with open(filePath,"r") as a:
-        a = a.readlines()    
-        for i,v in enumerate(a):
-            key = v.split(":")[0]
-            value = v.split(":")[1]
-            if key in paralist:
-                paralist[key] = value 
             
 
 def checkInside(s, f, sample, phys):
@@ -192,20 +169,81 @@ def cp_files(file_list):
 
 def ZLAverage(BC, J, D, L, P, m, phys):
     folder = creatDir(BC, J, D, L, P, m, phys)
-    sourceName = creatCpName(BC, J, D, L, P, m, phys)
-    colName = creatColName(BC, J, D, L, P, m, phys)
-    source += folder[0] + source
-    collect += folder[1] + collect
+    name = creatName(BC, J, D, L, P, m, phys)
+
+
+    myTarPath = folder[2] + "/" + name[2]
+    groupTarPath = folder[3] + "/" + name[3]
     
-    with open(collect, "a") as targetFile:
+    with open(myTarPath, "a") as targetFile:
+        datalist = targetFile.readlines()
+        datalist = [float(data,split(":")[-1]) for data in datalist]
+        ave = sum(datalist)/len(datalist)
+        error = np.std(datalist, ddof=1)
+    return ave, error
+
+def gapAverage(BC, J, D, L, P, m, phys):
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+
+
+    myTarPath = folder[2] + "/" + name[2]
+    groupTarPath = folder[3] + "/" + name[3]
+    
+    with open(myTarPath, "a") as targetFile:
+        datalist = targetFile.readlines()
+        datalist = [float(data,split(":")[1]).split()[1] - float(data,split(":")[1]).split()[0] for data in datalist]
+        ave = sum(datalist)/len(datalist)
+        error = np.std(datalist, ddof=1)
+    return ave, error
+
+
+def parse_context(context):
+    """
+    將原始字串解析為鍵值對列表。
+    """
+    lines = [line.strip() for line in context.strip().split('\n') if line.strip()]
+    pairs = []
+    for line in lines:
+        if ':' in line:
+            key_value = line.split(':', 1)
+            if len(key_value) == 2:
+                key_str, value = key_value
+                try:
+                    key_int = int(key_str.strip())
+                    pairs.append((key_int, value.strip()))
+                except ValueError:
+                    continue
+    return pairs
+
+def is_sorted(pairs):
+    """
+    檢查鍵值對列表是否已按鍵的升序排序。
+    """
+    return all(pairs[i][0] <= pairs[i + 1][0] for i in range(len(pairs) - 1))
+
+def sort_context(pairs):
+    """
+    對鍵值對列表按鍵進行排序，並重建為字串格式。
+    """
+    sorted_pairs = sorted(pairs, key=lambda x: x[0])
+    s1 = sorted_pairs[0][0]  # 假設第一個鍵是 s1
+    sorted_lines = [f"{key}:{value}" for key, value in sorted_pairs]
+    return '\n'.join(sorted_lines), s1
+
+def sort_if_needed(context):
+    """
+    若資料未排序，則進行排序；否則返回原始資料。
+    """
+    pairs = parse_context(context)
+    if is_sorted(pairs):
+        print("資料已排序，無需排序。")
+        s1 = int(pairs[0][0])  # 假設第一個鍵是 s1
+        return context, s1
+    else:
+        print("資料未排序，開始排序。")
+        return sort_context(pairs)
         
-        for seed in  seedArray:
-            sourcePath = source.replace("s_re",str(seed))
-            if os.path_exist(sourcePath):
-                context += fread(source,"ZL") + "\n"
-            else:
-                continue
-            
 def Combine(BC, J, D, L, P, m, phys, s1, s2):
     folder = creatDir(BC, J, D, L, P, m, phys)
     name = creatName(BC, J, D, L, P, m, phys)
@@ -216,15 +254,18 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
     groupTarPath = folder[3] + "/" + name[3]
 
     seedArray = list(range(s1, s2 + 1))
+    # with open(groupTarPath, "r") as originFile:
+    #     originaText = originFile.readlines()
     context = ""
-
+    # print("originaText")
     for seed in seedArray:
         groupSource = groupSourcePath.replace("s_re", str(seed))
         mySource = mySourcePath.replace("s_re", str(seed))
-
+        # if f"{seed}:" in originaText[seed-1]:
+        #     continue
         if os.path.exists(groupSource) and os.path.exists(mySource):
-            if compare(groupSource, mySource, seed):
-                fcontext = fread(groupSource, phys)
+            if compare(groupSource, mySource, seed):                
+                fcontext = fread(mySource, phys)
             else:
                 os.remove(groupSource)
                 shutil.copy(mySource, groupSource)
@@ -243,31 +284,44 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
             context += f"{seed}:{fcontext}\n"
 
     if context != "":
-        os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
+        context, s1 = sort_if_needed(context)
+        
+        save_context(context, s1, groupTarPath, myTarPath, phys)
         # os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
 
-        if s1 == 1:
-            context = f"{phys}\n{context}"
-            print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
-            with open(groupTarPath, "w") as f1, open(myTarPath, "w") as f2:
-                f1.write(context)
-                # f2.write(context)
-        else:
-            print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
-            with open(groupTarPath, "a") as f1, open(myTarPath, "a") as f2:
-                f1.write(context)
-                # f2.write(context)            
 
+def save_context(context, s1, groupTarPath, myTarPath, phys):
+    if not os.path.exists(groupTarPath):
+        os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
+
+    # print("originaText222")
+    if s1 == 1:
+        context = f"{phys}\n{context}"
+        print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+        with open(groupTarPath, "w") as f1:
+            f1.write(context)
+            # f2.write(context)
+        # with open(groupTarPath, "w") as f1, open(myTarPath, "w") as f2:
+        #     f1.write(context)
+        #     # f2.write(context)
+    else:
+        print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+        with open(groupTarPath, "a") as f1:
+            f1.write(context)
+                # f2.write(context)         
+            # with open(groupTarPath, "a") as f1, open(myTarPath, "a") as f2:
+            #     f1.write(context)
+            #     # f2.write(context)          
 def average(BC, J, D, L, P, m, phys, s1, s2):
     folder = creatDir(BC, J, D, L, P, m, phys)
     name = creatName(BC, J, D, L, P, m, phys)
 
-    mySourcePath = folder[0] + "/" + name[0]
-    groupSourcePath = folder[1] + "/" + name[1]
+    # mySourcePath = folder[0] + "/" + name[0]
+    # groupSourcePath = folder[1] + "/" + name[1]
     myTarPath = folder[2] + "/" + name[2]
     groupTarPath = folder[3] + "/" + name[3]
     
-    with open(f,"r") as a:
+    with open(myTarPath,"r") as a:
         a = a.readlines()
         if phys in a[0].strip():
             del a[0]
@@ -288,86 +342,6 @@ def average(BC, J, D, L, P, m, phys, s1, s2):
                     metaContext[sNum][int(corr[1]) - int(corr[0])].append(float(corr[2]))
 
         
-def Combine1(BC, J, D, L, P, m, phys, s1, s2):
-    folder = creatDir(BC, J, D, L, P, m, phys)
-    name = creatName(BC, J, D, L, P, m, phys)
-
-    mySourcePath = folder[0] + "/" + name[0]
-    groupSourcePath = folder[1] + "/" + name[1]
-    myTarPath = folder[2] + "/" + name[2]
-    groupTarPath = folder[3] + "/" + name[3]
-
-    with open(myTarPath,"r") as my:
-        my = my.reads()
-    with open(groupTarPath,"r") as group:
-        group = group.reads()
-    originalContext = my.split("\n")
-    if my != group:
-        print("my!=group")
-    else:
-        my.split("\n")
-        start = originalContext[0].split(":")[0]
-        end = originalContext[-1].split(":")[0]
-    print(f"the original data is from {start} to {end}")
-    print(f"the new data is from {s1} to {s2}")
-    seedArray = list(range(s1,s2+1))
-    
-    context = ""
-    
-    for seed in  seedArray:
-        groupSource = groupSourcePath.replace("s_re",str(seed))
-        mySource = mySourcePath.replace("s_re",str(seed))
-
-        if os.path.exists(groupSource) and os.path.exists(mySource):
-            if compare(groupSource, mySource, seed):
-                fcontext = fread(groupSource,phys)
-                if fcontext == None:
-                    continue
-                context += f"{seed}:{fcontext}\n"
-            else:
-                os.remove(groupSource)
-                shutil.copy(mySource, groupSource)
-                fcontext = fread(groupSource,phys)
-                if fcontext == None:
-                    continue
-                context += f"{seed}:{fcontext}\n"
-        else:
-            if os.path.exists(mySource):
-                os.makedirs(os.path.dirname(groupSource), exist_ok=True)
-                shutil.copy(mySource, groupSource)
-                os.remove(mySource)
-                fcontext = fread(groupSource,phys)
-                if fcontext == None:
-                    continue
-                context += f"{seed}:{fcontext}\n"
-            else:
-                fcontext = fread(groupSource,phys)
-                if fcontext == None:
-                    continue
-                context += f"{seed}:{fcontext}\n"              
-
-    if context != "":
-        if s1 > end:
-            context = originalContext
-        if s1 == 1:
-            context = f"{phys}\n{context}" 
-            print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")
-            os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
-            os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
-            with open(groupTarPath, "w") as targetFile1, open(myTarPath, 'w') as targetFile2:
-                targetFile1.write(context)
-                targetFile2.write(context)
-        else:
-            if os.path.exits(groupTarPath) and os.path.exits(myTarPath):
-                print(f"groupTarPath:{groupTarPath}, myTarPath:{myTarPath}")
-                os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
-                os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
-                with open(groupTarPath, "a") as targetFile1, open(myTarPath, 'a') as targetFile2:
-                    targetFile1.write(context)
-                    targetFile2.write(context)   
-            else:
-                print(f"groupTarPath or myTarPath not exist")   
-
 def parameter_read_dict(filename):
     parameters = {}
     try:
@@ -384,51 +358,7 @@ def parameter_read_dict(filename):
     
     return parameters
 
-# def corrAverage(BC, J, D, L, P, m, phys):
-#     folder = creatDir()
-#     source = creatCpName()
-#     collect = creatColName()
-#     source += folder + source
-#     collect += folder + collect
-    
-#     with open(collect, "a") as targetFile:
-        
-#         for seed in  seedArray:
-#             sourcePath = source.replace("s_re",str(seed))
-#             if os.path_exist(sourcePath):
-#                 context += fread(source,"ZL") + "\n"
-#             else
-#                 continue
-def gapAverage(BC, J, D, L, P, m, phys):
-    folder = creatDir()
-    source = creatCpName()
-    collect = creatColName()
-    source += folder + source
-    collect += folder + collect
-    
-    with open(collect, "a") as targetFile:
-        
-        for seed in  seedArray:
-            sourcePath = source.replace("s_re",str(seed))
-            if os.path_exist(sourcePath):
-                context += fread(source,"ZL") + "\n"
-            else:
-                continue
-# def w_locCombine(BC, J, D, L, P, m, phys):
-#     folder = creatDir()
-#     source = creatCpName()
-#     collect = creatColName()
-#     source += folder + source
-#     collect += folder + collect
-    
-#     with open(collect, "a") as targetFile:
-        
-#         for seed in  seedArray:
-#             sourcePath = source.replace("s_re",str(seed))
-#             if os.path_exist(sourcePath):
-#                 context += fread(source,"ZL") + "\n"
-#             else
-#                 continue
+
             
 if __name__ == "__main__":
     file = sys.argv[1]
@@ -449,18 +379,16 @@ if __name__ == "__main__":
     # s2 = int(parameterlist["S"]["S2"])
     s1 = int(sys.argv[2])
     s2 = int(sys.argv[3])
-    for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
+    if BC == "PBC":
+        s_list = ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]
+    else:
+        s_list = ["ZL","corr1","corr2","J_list","energy","dimerization","w_loc","seed"]
+        
+    for s in s_list:
         for L in para.L_str:
             for J in para.J_str:
                     arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
-    # s1 = 1
-    # s2 = 30000
-    # for s in ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]:
-    #     for L in ["L31","L63","L127"]:
-    #         for J in ["Jdis030","Jdis080"]:
-    #                 arg.append(("OBC", J, "Dim000", L, "P10", "m40", s, s1, s2))
-    # print(Jstr)
-    # print(Lstr)
+
     print(arg)         
 
     def fun(arg):

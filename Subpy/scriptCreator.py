@@ -114,8 +114,11 @@ class paraList1:
         self.S_str = [["seed1=" + str(self.S_num1[i]), "seed2=" + str(self.S_num2[i])] for i in range(len(self.S_num1))]
         
 class para:
-    def __init__(self,task,partitionlsit):
-        self.partitionlsit = partitionlsit
+    def __init__(self,task,partitionDict):
+        if task == "read":
+            self.file = partitionDict
+        else:
+            self.partitionDict = partitionDict
         if task == "submit":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
@@ -134,41 +137,40 @@ class para:
         elif task == "change":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
-                 "BC":None,"Pdis":None,"chi":None,"check_Or_Not":None,"status":None,"Ncore":None,"partition1":None,"partition2":None}
-            
-            self.cancel = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
-                 "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
-                 "BC":None,"Pdis":None,"chi":None,"status":None,"Ncore":None,"partition1":None,"task":"cancel"}
-            self.resubmit = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
-                 "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
-                 "BC":None,"Pdis":None,"chi":None,"check_Or_Not":None,"Ncore":None,"partition1":None,"task":"resubmit"}
-            
+                 "BC":None,"Pdis":None,"chi":None,"check_Or_Not":None,"status":None,"Ncore":None,"partition1":None,"partition2":None,"task":"change"}
+                      
         elif task == "dis":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
                  "BC":None,"Pdis":None,"chi":None,"status":None,"Ncore":None,"partition1":None,"task":"dis"}
+            
         elif task == "collect":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
                  "BC":None,"Pdis":None,"chi":None,"partition1":None,"Ncore":None,"task":"collect"}
+            
         elif task == "read":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
                  "BC":None,"Pdis":None,"chi":None,"status":None,"Ncore":None,"partition1":None}
             self.setfromfile()
+            
     def setfromfile(self):    
-        parameter = self.parameter_read_dict(self.partitionlsit)
-        self.para["S"] = {"S1":int(parameter["s1"]),"S2":int(parameter["s2"]),"dS":int(parameter["ds"])}
+        parameter = self.parameter_read_dict()
+        try:
+            self.para["S"] = {"S1":int(parameter["s1"]),"S2":int(parameter["s2"]),"dS":int(parameter["ds"])}
+        except ValueError:
+            print("value error, set S to skip")
         self.para["L"] = {"L1":int(parameter["L"]),"L2":int(parameter["L"]),"dL":0}
         self.para["J"] = {"J1":float(parameter["J"]),"J2":float(parameter["J"]),"dJ":0}
         self.para["D"] = {"D1":float(parameter["D"]),"D2":float(parameter["D"]),"dD":0}
         self.para["BC"] = parameter["BC"]
         self.para["Pdis"] = int(parameter["Pdis"])
         self.para["chi"] = int(parameter["chi"])                           
-    def parameter_read_dict(self,filename):
+    def parameter_read_dict(self):
         parameters = {}
         try:
-            with open(filename, 'r', encoding='utf-8') as file:
+            with open(self.file, 'r', encoding='utf-8') as file:
                 for line in file:
                     if ':' in line:
                         key, value = line.split(':', 1)
@@ -177,8 +179,7 @@ class para:
                         if key:
                             parameters[key] = value
         except FileNotFoundError:
-            print(f"無法開啟檔案: {filename}")
-        
+            print(f"無法開啟檔案: {self.file}")
         return parameters
             
     def keyin(self):
@@ -239,7 +240,7 @@ class para:
         for key, value in S_dic.items():
         # while(len(S_list) < 3):
             try:
-                average.showPartition()
+                average.getPartitionStatus()
                 S = input(key + " : \n")
                 S = int(S)
             except ValueError: 
@@ -379,18 +380,31 @@ class para:
         if self.para["task"] == "submit" or self.para["task"] == "collect":
             self.setCoreNum()
         # print(self.partitionlsit)
-        numOfpartitionlist = [int(v[0]) for v in self.partitionlsit]
+        numOfpartitionlist = [int(key) for key, value in self.partitionDict.items()]
         # print(numOfpartitionlist)
         partition1 = 10000      
         while(int(partition1) not in numOfpartitionlist):
-            average.showPartition()
+            average.getPartitionStatus()
             partition1 = input("partition1 : \n")    
             # partition1 = int(partition1)
             if partition1 == "":
                 self.para["partition1"] = "skip"
                 return
-        self.para["partition1"] = self.partitionlsit[int(partition1)][1]
         
+        print(self.partitionDict)
+        self.para["partition1"] = self.partitionDict[int(partition1)][0]
+    def set_partition2(self):
+        self.setCoreNum()        
+        numOfpartitionlist = [int(key) for key, value in self.partitionDict.items()]
+        partition2 = 10000    
+        while(int(partition2) not in numOfpartitionlist):
+            average.getPartitionStatus()
+            partition2 = input("partition2 : \n")    
+            # partition2 = int(partition2)
+            if partition2 == "":
+                self.para["partition2"] = "skip"
+                return
+        self.para["partition2"] = self.partitionDict[int(partition2)][0]        
     def print_param(self, name, values):
         length = len(values)
         min_length = 5  # 设置最小长度阈值
@@ -408,36 +422,24 @@ class para:
             print(self.para["L"])
             print(self.para["J"])
             print(self.para["D"])
-            self.coreNum = len(para.L_num)*len(para.J_num)*len(para.D_num)
-            self.print_param("para.L_num", para.L_num)
-            self.print_param("para.J_num", para.J_num)
-            self.print_param("para.D_num", para.D_num)
+            self.coreNum = len(para.L_num)*len(para.J_num)*len(para.D_num)*self.para["S"]["dS"]
+            # self.print_param("para.L_num", para.L_num)
+            # self.print_param("para.J_num", para.J_num)
+            # self.print_param("para.D_num", para.D_num)
             print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} = {self.coreNum}")
         if self.para["task"] == "submit":
             print(self.para["L"])
             print(self.para["J"])
             print(self.para["D"])
             print(self.para["S"])
-            self.coreNum = len(para.L_num)*len(para.J_num)*len(para.D_num)*len(para.S_num)
+            self.coreNum = len(para.L_num)*len(para.J_num)*len(para.D_num)*self.para["S"]["dS"]
         
-            self.print_param("para.L_num", para.L_num)
-            self.print_param("para.J_num", para.J_num)
-            self.print_param("para.D_num", para.D_num)
-            self.print_param("para.S_num", para.S_num)
+            # self.print_param("para.L_num", para.L_num)
+            # self.print_param("para.J_num", para.J_num)
+            # self.print_param("para.D_num", para.D_num)
+            # self.print_param("para.S_num", para.S_num)
 
-            print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} * {len(para.S_num)} = {self.coreNum}")
-    def set_partition2(self):
-        
-        numOfpartitionlist = [int(v[0]) for v in self.partitionlsit]
-        partition2 = 10000    
-        while(partition2 not in numOfpartitionlist):
-            average.showPartition()
-            partition2 = input("partition2 : \n")    
-            # partition2 = int(partition2)
-            if partition2 == "":
-                self.para["partition2"] = "skip"
-                return
-        self.para["partition2"] = self.partitionlsit[int(partition2)][1]
+            print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} * {self.para["S"]["dS"]} = {self.coreNum}")
     def release(self):
         self.new_dic = {}
         for key,value in self.para.items():
@@ -447,247 +449,3 @@ class para:
                 for key1,value1 in value.items():
                     self.new_dic.update([(key1, str(value1))])
 
-
-################################################### not used ############################################
-
-                    
-class paraList:
-    def __init__(self,title,inlist):
-        # self._numlist = list(numlist.values())
-        if ("." in list(inlist.values())[0]) or ("." in list(inlist.values())[1]) or ("." in list(inlist.values())[2]): 
-            self.intOrnot = "N"
-        else:
-            self.intOrnot = "Y"
-        self.p_s100_list = [] # ex 050,150,050
-        self.set_p_s100_list(title,list(inlist.values()))
-        # self.p_list = list(inlist.values())
-        self.p_num_list = [] # ex 0.5,1.5,0.5
-        self.set_p_num_list(title,list(inlist.values()))
-        self.p_str_list = [] # ex Jdis050,Jdis150,Jdis050
-        self.set_p_str_list(title,self.p_s100_list.copy())
-
-        self.s100_list = [] # ex 050,100,150...
-        self.set_s100_list(title,self.p_s100_list.copy())
-        self.num_list = [] # ex 0.5,1,1.5...
-        self.set_num_list(title,self.s100_list.copy())
-        self.str_list = [] # ex Jdis050,Jdis100,Jdis150...
-        self.set_str_list(title,self.s100_list.copy())
-        
-    def set_p_s100_list(self,title,inlist):
-        # if self.intOrnot == "N":
-        if inlist[0] == inlist[1]:
-            s = str(float(inlist[0]))
-            s = inlist[0]
-            slen = len(s)
-            l=re.sub("[^0-9]", "", s)
-
-            if self.intOrnot == "N":
-                while len(l) < 3:
-                    l = l + "0"                
-            self.p_s100_list = [l,l,"000"]
-        else:
-            p1=re.sub("[^0-9]", "", inlist[0])
-            if self.intOrnot == "N":
-                while len(p1) < 3:
-                    p1 = p1 + "0"            
-            p2=re.sub("[^0-9]", "", inlist[1])
-            if self.intOrnot == "N":
-                while len(p2) < 3:
-                    p2 = p2 + "0"
-            dp=re.sub("[^0-9]", "", inlist[2])
-            if self.intOrnot == "N":
-                while len(dp) < 3:
-                    dp = dp + "0"      
-            self.p_s100_list = [p1,p2,dp]    
-        # else:
-        #     if inlist[0] == inlist[1]:
-        #         slen = len(inlist[0])
-        #         l=re.sub("[^0-9]", "", inlist[0])
-        #         while len(l) < slen:
-        #             l = l + "0"
-        #         self.p_s100_list = [l,l,"000"]
-        #     else:
-        #         p1=re.sub("[^0-9]", "", inlist[0])
-        #         if self.intOrnot == "N":
-        #             while len(p1) < 3:
-        #                 p1 = p1 + "0"            
-        #         p2=re.sub("[^0-9]", "", inlist[1])
-        #         if self.intOrnot == "N":
-        #             while len(p2) < 3:
-        #                 p2 = p2 + "0"
-        #         dp=re.sub("[^0-9]", "", inlist[2])
-        #         if self.intOrnot == "N":
-        #             while len(dp) < 3:
-        #                 dp = dp + "0"      
-        #         self.p_s100_list = [p1,p2,dp]    
-    def set_p_num_list(self,title,inlist):
-        if inlist[0] == inlist[1]:
-            inlist[2] = "0"
-        l_num = []
-        for s in inlist:
-            l = [c for c in s if c.isdigit()]
-            if "." in s:
-                l.insert(1,".")
-                x = "".join(l)
-                num = float("".join(x))
-            else:
-                x = "".join(l)
-                num = int("".join(x))
-            l_num.append(num)
-        self.p_num_list = l_num
-    def set_p_str_list(self,title,inlist):
-        self.p_str_list = []
-        for s in inlist:
-            self.p_str_list.append(title + s)
-    def set_s100_list(self,title,inlist):
-        if self.intOrnot == "N":
-            if inlist[0] == inlist[1]:
-                l = []
-                l.append(inlist[0])
-            else:
-                n = int((int(inlist[1]) - int(inlist[0]))/int(inlist[2]))
-                l = []
-                for i in range(n+1):
-                    if len(str(int(inlist[0]) + i*int(inlist[2])))==2:
-                        l.append("0"+str(int(inlist[0]) + i*int(inlist[2])))
-                    elif len(str(int(inlist[0]) + i*int(inlist[2])))==1:
-                        l.append("00"+str(int(inlist[0]) + i*int(inlist[2])))
-                    else:
-                        l.append(str(int(inlist[0]) + i*int(inlist[2])))
-            self.s100_list = list(l)
-        else:
-            if inlist[0] == inlist[1]:
-                l = []
-                l.append(str(int(inlist[0])))
-            else:
-                n = int((int(inlist[1]) - int(inlist[0]))/int(inlist[2]))
-                l = []
-                for i in range(n+1):
-                    if len(str(int(inlist[0]) + i*int(inlist[2])))==2:
-                        l.append(str(int(inlist[0]) + i*int(inlist[2])))
-                    elif len(str(int(inlist[0]) + i*int(inlist[2])))==1:
-                        l.append(str(int(inlist[0]) + i*int(inlist[2])))
-                    else:
-                        l.append(str(int(inlist[0]) + i*int(inlist[2])))
-            self.s100_list = list(l)        
-    def set_num_list(self,title,inlist):
-        l = []
-        if self.intOrnot == "N":
-            for s in inlist:
-                l.append(float(s[0]+"."+s[1]+s[2]))
-        else:
-            for s in inlist:
-                l.append(int(s))            
-        self.num_list = list(l)
-    def set_str_list(self,title,inlist):
-        l = []
-        for s in inlist:
-            if self.intOrnot == "N":
-                if int(s) == 0:
-                    l.append(title + "000")
-                else:
-                    l.append(title + str(s))
-            else:
-                if int(s) == 0:
-                    l.append(title + "000")
-                else:
-                    l.append(title + str(s))
-        self.str_list = list(l)
-        
-class Lpara:
-    def __init__(self,title,inlist):
-        
-        self.p_s100_list = [] # ex 050,150,050
-        self.set_p_s100_list(title,list(inlist.values()))
-        # self.p_list = list(inlist.values())
-        self.p_num_list = [] # ex 0.5,1.5,0.5
-        self.set_p_num_list(title,list(inlist.values()))
-        self.p_str_list = [] # ex Jdis050,Jdis150,Jdis050
-        self.set_p_str_list(title,self.p_s100_list.copy())
-
-        self.s100_list = [] # ex 050,100,150...
-        self.set_s100_list(title,self.p_s100_list.copy())
-        self.num_list = [] # ex 0.5,1,1.5...
-        self.set_num_list(title,self.s100_list.copy())
-        self.str_list = [] # ex Jdis050,Jdis100,Jdis150...
-        self.set_str_list(title,self.s100_list.copy())
-        
-        # self.p_list = list(inlist.values())
-        # self.p_num_list = []
-        # self.set_p_num_list(title,list(inlist.values()))
-        # self.p_s100_list = []
-        # self.set_p_s100_list(title,list(inlist.values()))
-        # self.p_str_list = []
-        # self.set_p_str_list(title,self.p_s100_list.copy())
-
-        # self.s100_list = []
-        # self.set_s100_list(title,self.p_s100_list.copy())
-        # self.num_list = []
-        # self.set_num_list(title,self.s100_list.copy())
-        # self.str_list = []
-        # self.set_str_list(title,self.s100_list.copy())
-    def set_p_s100_list(self,title,inlist):
-        for s in inlist:
-            self.p_s100_list.append(str(int(s)))
-    def set_p_num_list(self,title,inlist):
-        for s in inlist:
-            self.p_num_list.append(int(s))
-    def set_p_str_list(self,title,inlist):
-        for s in inlist:
-            self.p_str_list.append(title + str(int(s)))
-            
-    def set_s100_list(self,title,inlist):
-        if inlist[0] == inlist[1]:
-            l = []
-            l.append(str(int(inlist[0])))
-        else:
-            n = int((int(inlist[1]) - int(inlist[0]))/int(inlist[2]))
-            l = []
-            for i in range(n+1):
-                # if len(str(int(inlist[0]) + i*int(inlist[2])))==2:
-                #     l.append("0"+str(int(inlist[0]) + i*int(inlist[2])))
-                # else:
-                l.append(str(int(inlist[0]) + i*int(inlist[2])))
-        self.s100_list = list(l)
-    def set_num_list(self,title,inlist):
-        l = []
-        for s in inlist:
-            l.append(int(s))
-        self.num_list = list(l)
-    def set_str_list(self,title,inlist):
-        l = []
-        for s in inlist:
-            l.append(title + s)
-        self.str_list = list(l)
-
-class Spara:
-    def __init__(self,title,numlist):
-        numlist = list(numlist.values())
-        self.x1 = int(numlist[0])
-        self.x2 = int(numlist[1])
-        self.dx = int(numlist[2])
-        self.title = title
-    def toS(self):
-        numSeed = []
-        for i in list(range(self.x1 ,self.x2, self.dx)):
-            a = [j for j in list(range(i,i+self.dx))]
-            numSeed.append(a)
-        # print(numSeed)
-        # numL = [self.x1 + l*self.dx for l in range(int((self.x2-self.x1)/self.dx) + 1)]
-        return list(numSeed)   
-    def toStr(self):
-        if self.x2>0:
-            strSeed = []
-            for i in list(range(self.x1 ,self.x2,self.dx)):
-                a = [self.title + str(j) for j in list(range(i,i+self.dx))]
-                strSeed.append(a)
-            # numL = [ self.title + str(self.x1 + l*self.dx) for l in range(int((self.x2-self.x1)/self.dx) + 1)]
-        else:
-            strSeed = []
-            for i in list(range(self.x1 ,self.x2,self.dx)):
-                a = [self.title + "N" + str(j) for j in list(range(i,i+self.dx))]
-                strSeed.append(a)
-            # numL = [ self.title + "N" + str((self.x1 + l*self.dx)*-1) for l in range(int((self.x2-self.x1)/self.dx) + 1)]    
-        return list(strSeed)    
-    def __repr__(self):
-        return f'Point({self.x1}, {self.x2}, {self.dx})'
