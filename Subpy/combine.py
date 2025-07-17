@@ -267,13 +267,13 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
             if compare(groupSource, mySource, seed):                
                 fcontext = fread(mySource, phys)
             else:
-                os.remove(groupSource)
+                # os.remove(groupSource)
                 shutil.copy(mySource, groupSource)
                 fcontext = fread(groupSource, phys)
         elif os.path.exists(mySource):
             os.makedirs(os.path.dirname(groupSource), exist_ok=True)
             shutil.copy(mySource, groupSource)
-            os.remove(mySource)
+            # os.remove(mySource)
             fcontext = fread(groupSource, phys)
         elif os.path.exists(groupSource):
             fcontext = fread(groupSource, phys)
