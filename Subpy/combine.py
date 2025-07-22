@@ -10,11 +10,20 @@ import multiprocessing
 import scriptCreator
 from pathlib import Path
 import shutil
+import fcntl
 
 
-tSDRG_path = "/home/aronton/tSDRG_random"
-# group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
-group_path = "/home/aronton/tSDRG_random"
+
+dicosPath = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
+scopionPath = "/home/aronton/tSDRG_random"
+
+if os.path.isdir(dicosPath):
+    tSDRG_path = dicosPath
+    group_path = dicosPath
+    
+if os.path.isdir(scopionPath):
+    tSDRG_path = scopionPath
+    group_path = scopionPath
     
 sourcelist = {"ZL":"ZL.csv", "energy":"energy.csv", "seed":"s_re_seed.csv",\
     "corr1":"_".join(["L_re","P_re","m_re","s_re","corr1.csv"]), "corr2":"_".join(["L_re","P_re","m_re","s_re","corr2.csv"]),\
@@ -293,25 +302,68 @@ def Combine(BC, J, D, L, P, m, phys, s1, s2):
 def save_context(context, s1, groupTarPath, myTarPath, phys):
     if not os.path.exists(groupTarPath):
         os.makedirs(os.path.dirname(groupTarPath), exist_ok=True)
-
-    # print("originaText222")
     if s1 == 1:
         context = f"{phys}\n{context}"
-        print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+        # print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
         with open(groupTarPath, "w") as f1:
-            f1.write(context)
-            # f2.write(context)
+            
+            try:
+                # 嘗試用非阻塞方式加鎖
+                fcntl.flock(f1, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                print("✅ 立即取得鎖")
+                print(f"檔案已鎖定 [WRITE] groupTarPath: {groupTarPath}, s1:{s1}, 目前進程 PID: {os.getpid()}")
+                f1.write(context)
+                fcntl.flock(f1, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                print("✅ 檔案已解鎖")    
+            except BlockingIOError:
+                print("⏳ 檔案已被鎖住，進入等待模式...")
+                fcntl.flock(f1, fcntl.LOCK_EX)  # 這裡才會阻塞，等釋放
+                print("✅ 最終取得鎖")
+                print(f"檔案已鎖定 [WRITE] groupTarPath: {groupTarPath}, s1:{s1}, 目前進程 PID: {os.getpid()}")
+                f1.write(context)
+                fcntl.flock(f1, fcntl.LOCK_UN)
+                print("✅ 檔案已解鎖")            # f2.write(context)
         # with open(groupTarPath, "w") as f1, open(myTarPath, "w") as f2:
         #     f1.write(context)
         #     # f2.write(context)
     else:
-        print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+        # print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
         with open(groupTarPath, "a") as f1:
-            f1.write(context)
-                # f2.write(context)         
-            # with open(groupTarPath, "a") as f1, open(myTarPath, "a") as f2:
-            #     f1.write(context)
-            #     # f2.write(context)          
+            
+            try:
+                # 嘗試用非阻塞方式加鎖
+                fcntl.flock(f1, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                print("✅ 立即取得鎖")
+                print(f"檔案已鎖定 [APPEND] groupTarPath: {groupTarPath}, s1:{s1}, 目前進程 PID: {os.getpid()}")
+                f1.write(context)
+                fcntl.flock(f1, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                print("✅ 檔案已解鎖")    
+            except BlockingIOError:
+                print("⏳ 檔案已被鎖住，進入等待模式...")
+                fcntl.flock(f1, fcntl.LOCK_EX)  # 這裡才會阻塞，等釋放
+                print("✅ 最終取得鎖")
+                print(f"檔案已鎖定 [APPEND] groupTarPath: {groupTarPath}, s1:{s1}, 目前進程 PID: {os.getpid()}")
+                f1.write(context)
+                fcntl.flock(f1, fcntl.LOCK_UN)
+                print("✅ 檔案已解鎖") 
+    # # print("originaText222")
+    # if s1 == 1:
+    #     context = f"{phys}\n{context}"
+    #     print(f"[WRITE] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+    #     with open(groupTarPath, "w") as f1:
+    #         f1.write(context)
+    #         # f2.write(context)
+    #     # with open(groupTarPath, "w") as f1, open(myTarPath, "w") as f2:
+    #     #     f1.write(context)
+    #     #     # f2.write(context)
+    # else:
+    #     print(f"[APPEND] groupTarPath: {groupTarPath}, myTarPath: {myTarPath}")
+    #     with open(groupTarPath, "a") as f1:
+    #         f1.write(context)
+    #             # f2.write(context)         
+    #         # with open(groupTarPath, "a") as f1, open(myTarPath, "a") as f2:
+    #         #     f1.write(context)
+    #         #     # f2.write(context)          
 def average(BC, J, D, L, P, m, phys, s1, s2):
     folder = creatDir(BC, J, D, L, P, m, phys)
     name = creatName(BC, J, D, L, P, m, phys)

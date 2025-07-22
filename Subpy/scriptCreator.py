@@ -114,11 +114,11 @@ class paraList1:
         self.S_str = [["seed1=" + str(self.S_num1[i]), "seed2=" + str(self.S_num2[i])] for i in range(len(self.S_num1))]
         
 class para:
-    def __init__(self,task,partitionDict):
+    def __init__(self,task,partitionlist):
         if task == "read":
-            self.file = partitionDict
+            self.file = partitionlist
         else:
-            self.partitionDict = partitionDict
+            self.partitionlist = partitionlist
         if task == "submit":
             self.para = {"Spin":None,"L":{"L1":None,"L2":None,"dL":None},"J":{"J1":None,"J2":None,"dJ":None},\
                  "D":{"D1":None,"D2":None,"dD":None},"S":{"S1":None,"S2":None,"dS":None},\
@@ -380,7 +380,7 @@ class para:
         if self.para["task"] == "submit" or self.para["task"] == "collect":
             self.setCoreNum()
         # print(self.partitionlsit)
-        numOfpartitionlist = [int(key) for key, value in self.partitionDict.items()]
+        numOfpartitionlist = list(range(1,len(self.partitionlist)))
         # print(numOfpartitionlist)
         partition1 = 10000      
         while(int(partition1) not in numOfpartitionlist):
@@ -391,11 +391,11 @@ class para:
                 self.para["partition1"] = "skip"
                 return
         
-        print(self.partitionDict)
-        self.para["partition1"] = self.partitionDict[int(partition1)][0]
+        # print(self.partitionlist[int(partition1)].split()[1])
+        self.para["partition1"] = self.partitionlist[int(partition1)].split()[1]
     def set_partition2(self):
         self.setCoreNum()        
-        numOfpartitionlist = [int(key) for key, value in self.partitionDict.items()]
+        numOfpartitionlist = [int(i) for i, value in enumerate(self.partitionlist)]
         partition2 = 10000    
         while(int(partition2) not in numOfpartitionlist):
             average.getPartitionStatus()
@@ -404,7 +404,7 @@ class para:
             if partition2 == "":
                 self.para["partition2"] = "skip"
                 return
-        self.para["partition2"] = self.partitionDict[int(partition2)][0]        
+        self.para["partition2"] = self.partitionlist[int(partition2)].split()[1]        
     def print_param(self, name, values):
         length = len(values)
         min_length = 5  # 设置最小长度阈值
@@ -439,7 +439,7 @@ class para:
             # self.print_param("para.D_num", para.D_num)
             # self.print_param("para.S_num", para.S_num)
 
-            print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} * {self.para["S"]["dS"]} = {self.coreNum}")
+            print(f"Totalcore = {len(para.L_num)} * {len(para.J_num)} * {len(para.D_num)} * {self.para['S']['dS']} = {self.coreNum}")
     def release(self):
         self.new_dic = {}
         for key,value in self.para.items():

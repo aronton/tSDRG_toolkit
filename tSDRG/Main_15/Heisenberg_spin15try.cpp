@@ -19,11 +19,41 @@
 #include <sys/file.h>   // flock()
 #include <errno.h>
 #include <unordered_map>
+#include <sys/stat.h>
 
 using namespace std;
 
-const string group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random/tSDRG/Main_15";
-const string my_path = "/home/aronton/tSDRG_random//tSDRG/Main_15";
+const string dicos_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random/tSDRG/Main_15";
+const string tSDRG_path = "/home/aronton/tSDRG_random//tSDRG/Main_15";
+
+string group_path;
+string my_path;
+
+
+bool dir_exists(const std::string &path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0) {
+        return false; // 無法取得資訊 → 不存在
+    }
+    return (info.st_mode & S_IFDIR) != 0; // 確認是資料夾
+}
+
+
+
+void setPath()
+{
+    if(dir_exists(dicos_path))
+    {
+        group_path = dicos_path;
+        my_path = dicos_path;
+    }
+
+    if(dir_exists(tSDRG_path))
+    {
+        group_path = tSDRG_path;
+        my_path = tSDRG_path;
+    }
+}
 
 string get_first_five_lines(const string& raw) {
     istringstream iss(raw);
@@ -172,7 +202,7 @@ void writeDatalistToFile(const datalist& data, const std::string& filename) {
 void createPath(paralist& para, datalist& data)
 {
     std::string file_name = para.Lstr + "_P" + to_string(para.Pdis) + "_m" + to_string(para.chi) + "_" + to_string(para.sample);
-    std::string base_path = my_path + "/data_random/" + para.BC + "/" + para.Jstr + "/" + para.Dstr + "/" + file_name + "/";
+    std::string base_path = group_path + "/data_random/" + para.BC + "/" + para.Jstr + "/" + para.Dstr + "/" + file_name + "/";
 
     para.path["dir"] = base_path;
     para.path["ZL"] = base_path + file_name + "_ZL.txt";
@@ -542,7 +572,6 @@ void tSDRG_XXZ1(paralist& para, datalist& data)
     std::ostringstream oss;
     
     oss << "\n------------------------------sample: " << sample << "------------------------------\n";
-
     
     data.message = oss.str();
 
@@ -848,8 +877,16 @@ int main(int argc, char *argv[])
         // std::cout << "seed1:" << seed1 << std::endl;
         // std::cout << "seed2:" << seed2 << std::endl;
         // cout << "plist.sample:" <<plist.sample;
-
+        setPath();
         createPath(plist, dlist);
+        if (plist.path.find("ZL") != plist.path.end()) {
+            const string& path_to_file = plist.path["ZL"];
+            ifstream file(path_to_file);
+            if (file.good()) {
+                cout << "ZL exists at path: " << path_to_file << endl;
+                return 0;
+            }
+        }
         tSDRG_XXZ1(plist, dlist);
         // cout << "Process " << world_rank << " is handling iteration " << i << endl;
     }

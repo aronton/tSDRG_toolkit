@@ -5,17 +5,27 @@ import sys
 import multiprocessing 
 import datetime
 import scriptCreator
-tSDRG_path="/home/aronton/tSDRG_random"
+import subprocess
 
+dicosPath = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
+scopionPath = "/home/aronton/tSDRG_random"
+
+if os.path.isdir(dicosPath):
+    tSDRG_path = dicosPath
+    group_path = dicosPath
+    
+if os.path.isdir(scopionPath):
+    tSDRG_path = scopionPath
+    group_path = scopionPath
 # create namelist of task
-def submitPara(tasklist, tSDRG_path):
+def submitPara(parameterlist, tSDRG_path):
 
-    p = tasklist
-    Spin = tasklist["Spin"]
-    Ncore = tasklist["Ncore"]
-    partition = tasklist["partition1"]
-    task = tasklist["task"]
-    para=scriptCreator.paraList1(tasklist["L"],tasklist["J"],tasklist["D"],tasklist["S"])
+    p = parameterlist
+    Spin = parameterlist["Spin"]
+    Ncore = parameterlist["Ncore"]
+    partition = parameterlist["partition1"]
+    task = parameterlist["task"]
+    para=scriptCreator.paraList1(parameterlist["L"],parameterlist["J"],parameterlist["D"],parameterlist["S"])
     L_num = para.L_num
     L_p_num = para.L_p_num
     L_str = para.L_str
@@ -30,9 +40,9 @@ def submitPara(tasklist, tSDRG_path):
 
     S_num = para.S_num
     S_str = para.S_str
-    s1 = tasklist["S"]["S1"]
-    s2 = tasklist["S"]["S2"]
-    ds = tasklist["S"]["dS"]
+    s1 = parameterlist["S"]["S1"]
+    s2 = parameterlist["S"]["S2"]
+    ds = parameterlist["S"]["dS"]
     # print("S_num:",S_num)
     # print("S_str:",S_str)
 
@@ -64,12 +74,12 @@ def submitPara(tasklist, tSDRG_path):
     print("D_p_str:",D_p_str)
     print("D_s100:",D_s100)
     print("D_p_s100:",D_p_s100)
-    Spin=tasklist["Spin"]
-    Pdis=tasklist["Pdis"]
-    chi=tasklist["chi"]
-    BC=tasklist["BC"]
+    Spin=parameterlist["Spin"]
+    Pdis=parameterlist["Pdis"]
+    chi=parameterlist["chi"]
+    BC=parameterlist["BC"]
     try:
-        check_Or_Not=tasklist["check_Or_Not"]
+        check_Or_Not=parameterlist["check_Or_Not"]
     except KeyError as e:
         print(e)
     # with open("./", "r") as file:
@@ -123,9 +133,10 @@ def EditandSub(paraPath,script_path,output_path,jobName):
         "replace1": jobName,
         "replace2": str(ds),
         "replace3": str(partition),
-        "replace4": output_path
+        "replace4": output_path,
+        "replace5": str(ds)
     }
-    print(task)
+    # print(task)
     if task == "submit":
         with open("run1.sh", 'r') as file:
             content = file.read()
@@ -135,7 +146,7 @@ def EditandSub(paraPath,script_path,output_path,jobName):
     # 依據 replacements 替換文字
     for old_text, new_text in replacements.items():
         content = content.replace(old_text, new_text)
-    print(content)
+    # print(content)
     if not os.path.exists(script_path):
         os.makedirs(script_path)
     script_path += f"/{jobName}.sh"
@@ -149,21 +160,21 @@ def EditandSub(paraPath,script_path,output_path,jobName):
     os.system(submit_cmd)    
 
 # organize task and parameter name into scriptpath
-def submit(tasklist, tSDRG_path, joblist=None):
-    print(tasklist)
-    p = tasklist
-    Ncore = tasklist["Ncore"]
-    partition = tasklist["partition1"]
-    Spin=tasklist["Spin"]
-    Pdis=tasklist["Pdis"]
-    chi=tasklist["chi"]
-    BC=tasklist["BC"]
-    if tasklist["task"] == "submit":
-        check_Or_Not=tasklist["check_Or_Not"]
-    ds=tasklist["S"]["dS"]
+def submit(parameterlist, tSDRG_path, tasklist=None):
+    print(parameterlist)
+    p = parameterlist
+    Ncore = parameterlist["Ncore"]
+    partition = parameterlist["partition1"]
+    Spin=parameterlist["Spin"]
+    Pdis=parameterlist["Pdis"]
+    chi=parameterlist["chi"]
+    BC=parameterlist["BC"]
+    if parameterlist["task"] == "submit":
+        check_Or_Not=parameterlist["check_Or_Not"]
+    ds=parameterlist["S"]["dS"]
 
     record_dir = tSDRG_path + "/tSDRG" + "/Main_" + str(Spin) + "/jobRecord" 
-    if tasklist["task"] == "collect":
+    if parameterlist["task"] == "collect":
     # record_dir = tSDRG_path + "/tSDRG" + "/Main_" + str(Spin) + "/jobRecord" 
         script_dir = record_dir + "/collect_script" + "/" + str(BC) + "/B" + str(chi)
         output_dir = record_dir + "/collect_slurmOutput" + "/" + str(BC) + "/B" + str(chi)
@@ -181,12 +192,14 @@ def submit(tasklist, tSDRG_path, joblist=None):
 
     # with open("run.sh", "r") as file:
     #     template = file.readlines()
-    if joblist == None:
-        joblist, arg = submitPara(tasklist, tSDRG_path)
+    if tasklist == None:
+        tasklist, arg = submitPara(parameterlist, tSDRG_path)
     os.system( "cd " + tSDRG_path + "/tSDRG/Main_" + str(Spin))
+    for i,s in enumerate(tasklist[0]):
+        print(s)
     # script_path_tot = "" 
-    print(joblist)
-    for i,jobName in enumerate(joblist):
+    # print(tasklist)
+    for i,jobName in enumerate(tasklist):
         elementlist = jobName.split("_")
         L = elementlist[1]
         J = elementlist[2]
@@ -195,12 +208,12 @@ def submit(tasklist, tSDRG_path, joblist=None):
         script_path = script_dir + "/" + L + "/" + J + "/" + D  
         output_path = output_dir + "/" + L + "/" + J + "/" + D
 
-        if tasklist["task"]=="submit":
+        if parameterlist["task"]=="submit":
             if not os.path.exists("/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date])):
                 os.makedirs("/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date]))
             paraPath = "/".join([tSDRG_path,"Subpy","parameterRead",now_year,now_date,"_".join([jobName,f"{now_time}.txt"])])
 
-        if tasklist["task"]=="collect":
+        if parameterlist["task"]=="collect":
             if not os.path.exists("/".join([tSDRG_path,"Subpy","collectPara",now_year,now_date])):
                 os.makedirs("/".join([tSDRG_path,"Subpy","collectPara",now_year,now_date]))
             paraPath = "/".join([tSDRG_path,"Subpy","collectPara",now_year,now_date,"_".join([jobName,f"{now_time}.txt"])])
@@ -243,9 +256,9 @@ def submit(tasklist, tSDRG_path, joblist=None):
 
 
 
-def find(tasklist):
+def find(parameterlist):
     print("find")
-    p = tasklist
+    p = parameterlist
     # flag = input("Job_state R/P")
     if p["status"] == "R":
         Job_state = "RUNNING"
@@ -258,9 +271,9 @@ def find(tasklist):
     partition = p["partition1"]      
     
     if partition != "skip":
-        job_list = os.popen("squeue " + "-u aronton " + "-p " + str(partition) + " -o \"%.5i %.10P %.110j %.10T %.10M\"")
+        job_list = os.popen("squeue " + "-u aronton " + "-p " + str(partition) + " -o \"%.15i %.25P %.150j %.20T %.20M\"")
     else:
-        job_list = os.popen("squeue " + "-u aronton " + " -o \"%.5i %.10P %.110j %.10T %.10M\"")
+        job_list = os.popen("squeue " + "-u aronton " + " -o \"%.15i %.25P %.150j %.20T %.20M\"")
     job_list = list(job_list)
 
     del job_list[0]
@@ -335,15 +348,9 @@ def find(tasklist):
      
     return job_list
 
-def parameterize(job_list):
-    paralist = []
-    for s in job_list:
-        s = tuple(s.split("_")) 
-        paralist.append(s)
+def cancel(parameterlist):
 
-def cancel(tasklist):
-
-    job_list = find(tasklist)
+    job_list = find(parameterlist)
 
     print("Cancel : \n\n")
     print("------------------------------------------------- \n\n")
@@ -358,9 +365,9 @@ def cancel(tasklist):
             os.system(cmd)        
     else:
         return
-def get(tasklist):
+def get(parameterlist):
     
-    job_list = find(tasklist)
+    job_list = find(parameterlist)
     task_list = []
     for job in job_list:
         task_list.append(job[2])
@@ -368,9 +375,9 @@ def get(tasklist):
     return task_list
 
 
-def show(tasklist):
+def show(parameterlist):
         
-    job_list = find(tasklist)
+    job_list = find(parameterlist)
 
     print("show\n\n")
     print("------------------------------------------------------\n\n")
@@ -378,9 +385,9 @@ def show(tasklist):
     for i in range(len(job_list)):
         print(job_list[i])
 
-def Distribution(tasklist):
+def Distribution(parameterlist):
         
-    job_list = find(tasklist)
+    job_list = find(parameterlist)
 
     print("Distribution\n\n")
     print("------------------------------------------------------\n\n")
@@ -459,6 +466,33 @@ def getPartitionStatus():
     # [print(v[0]) for v in partitionlsit]
     return partitionDict
 
+def get_partition_info_list():
+    # 執行 sinfo 指令
+    result = subprocess.run(
+        ["sinfo", "-o", "%30P %20C %10l"],
+        stdout=subprocess.PIPE,
+        text=True
+    )
+
+    lines = result.stdout.strip().split('\n')
+    info_list = []
+
+    # 第 0 格為標題列
+    header = f"{'No.':<4} {'Partition':<30} {'CPU(A/I/O/T)':<20} {'TimeLimit':<10}"
+    info_list.append(header)
+
+    # 從第 1 行開始讀取資料
+    for idx, line in enumerate(lines[1:], start=1):
+        partition = line[:30].strip().rstrip('*')
+        cpu_info  = line[30:50].strip()
+        time_lim  = line[50:].strip()
+
+        row = f"{idx:<4} {partition:<30} {cpu_info:<20} {time_lim:<10}"
+        info_list.append(row)
+
+    return info_list
+
+        
 def showPartitionStatus():
     nodelist = getNodeStatus()
     for key, value in nodelist.items():
@@ -504,57 +538,65 @@ def main():
     ex : 15(Spin) 64(L) 1.1(J) 0.1(D) 10(Pdis) 40(chi) 1(initialSampleNumber) 20(finalSampleNumber) 5(sampleDelta), Y(check_Or_Not)\n")
 
     # task = sys.argv[1]
-    nodeDict =getNodeStatus()
-    partitionDict = getPartitionStatus()
+    # nodeDict =getNodeStatus()
+    # partitionDict = getPartitionStatus()
 
-    showPartitionStatus()
+    # showPartitionStatus()
+    partitionlist = get_partition_info_list()
+    for i,s in enumerate(partitionlist):
+        print(s)
     # [print(v) for v in partitionDict]
     # for key, value in partitionDict.items():
     #     print(f"{value[0]} : {value[1]}")
-    a = scriptCreator.para(task, partitionDict)
+    a = scriptCreator.para(task, partitionlist)
     
     a.keyin()
-    tasklist = a.para
+    parameterlist = a.para
 
-    print(tasklist,"\n")
-    for s in tasklist:
-        print(s," : ",tasklist[s])
+    print(parameterlist,"\n")
+    for s in parameterlist:
+        print(s," : ",parameterlist[s])
 
     if task == "submit" or task == "a":
-        joblist = submitPara(tasklist, tSDRG_path)
-        submit(tasklist, tSDRG_path)
+        tasklist = submitPara(parameterlist, tSDRG_path)
+        submit(parameterlist, tSDRG_path)
     elif task == "show" or task == "b":
-        show(tasklist)
-        Distribution(tasklist)
+        show(parameterlist)
+        Distribution(parameterlist)
     elif task == "cancel" or task == "c":
-        cancel(tasklist)
+        cancel(parameterlist)
     elif task == "change" or task == "d":
-        psubmit = scriptCreator.para("submit", partitionDict)
-        pcancel = scriptCreator.para("cancel", partitionDict)
+        psubmit = scriptCreator.para("submit", partitionlist)
+        pcancel = scriptCreator.para("cancel", partitionlist)
 
         for key,value in psubmit.para.items():
             if key == "partition1" or key == "task":
-                psubmit.para[key] = tasklist["partition2"]
+                psubmit.para[key] = parameterlist["partition2"]
                 psubmit.para["task"] = "submit"
             else:
-                psubmit.para[key] = tasklist[key]
+                psubmit.para[key] = parameterlist[key]
         for key,value in pcancel.para.items():
             if key == "partition1" or key == "task":
-                pcancel.para[key] = tasklist["partition1"]
+                pcancel.para[key] = parameterlist["partition1"]
                 pcancel.para["task"] = "cancel"
             else:
-                pcancel.para[key] = tasklist[key]
+                pcancel.para[key] = parameterlist[key]
         
-        joblist=get(pcancel.para)
+        tasklist=get(pcancel.para)
         cancel(pcancel.para)
-        submit(psubmit.para, tSDRG_path, joblist)
+        mydict = parameterlist['S']
+        found = any("skip" in str(v) for v in mydict.values() if isinstance(v, str))
+        if found == True:
+            submit(psubmit.para, tSDRG_path,tasklist)
+        else:
+            submit(psubmit.para, tSDRG_path)
     elif task == "dis" or task == "e":
-        Distribution(tasklist)
+        Distribution(parameterlist)
     elif task == "check" or task == "f":
-        Distribution(tasklist)
+        Distribution(parameterlist)
     elif task == "collect" or task == "g":
-        joblist = submitPara(tasklist, tSDRG_path)
-        submit(tasklist, tSDRG_path)
+        tasklist = submitPara(parameterlist, tSDRG_path)
+        submit(parameterlist, tSDRG_path)
     return
 
 if __name__ == '__main__' :

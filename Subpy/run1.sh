@@ -83,10 +83,10 @@ for ((i=0; i<cols; i++)); do
     for ((j=0; j<rows; j++)); do
         index=$((s1 - 1 + i * rows + j + 1))
         if [[ $j -eq 0 || $j -eq $((rows - 1)) ]]; then
-            run_and_print srun --oversubscribe --ntasks=1 --nodes=1 --cpus-per-task=1  --cpu-bind=cores ./spin15_250619.exe ${FILE} ${index} ${index} &
+            run_and_print srun --oversubscribe --ntasks=1 --nodes=1 --cpus-per-task=1  --cpu-bind=cores ./spin15_250722.exe ${FILE} ${index} ${index} &
         else
         # echo "srun --overlap --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin150531.exe ${FILE} ${index} ${index} &"
-            srun --oversubscribe --ntasks=1 --nodes=1 --cpus-per-task=1 --cpu-bind=cores ./spin15_250619.exe ${FILE} ${index} ${index} &
+            srun --oversubscribe --ntasks=1 --nodes=1 --cpus-per-task=1 --cpu-bind=cores ./spin15_250722.exe ${FILE} ${index} ${index} &
         fi 
     done
     s2_combine=$((s1 - 1 + (i+1) * rows ))
@@ -102,5 +102,6 @@ for ((i=0; i<cols; i++)); do
     echo "Round${i} finished $(date)\n\n"
 done
 # python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ${FILE}
-
+run_and_print python /home/aronton/tSDRG_random/Subpy/combine.py "${FILE}" 1 "${s2}"
+run_and_print python /home/aronton/tSDRG_random/Subpy/ave.py "${FILE}" 1 "${s2}"
 echo "Job finished $(date)"

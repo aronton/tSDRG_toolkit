@@ -13,9 +13,16 @@ import numpy as np
 
 
 
-tSDRG_path = "/home/aronton/tSDRG_random"
-# group_path = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
-group_path = "/home/aronton/tSDRG_random"
+dicosPath = "/ceph/work/NTHU-qubit/LYT/tSDRG_random"
+scopionPath = "/home/aronton/tSDRG_random"
+
+if os.path.isdir(dicosPath):
+    tSDRG_path = dicosPath
+    group_path = dicosPath
+    
+if os.path.isdir(scopionPath):
+    tSDRG_path = scopionPath
+    group_path = scopionPath
     
 sourcelist = {"ZL":"ZL.csv", "energy":"energy.csv", "seed":"s_re_seed.csv",\
     "corr1":"_".join(["L_re","P_re","m_re","s_re","corr1.csv"]), "corr2":"_".join(["L_re","P_re","m_re","s_re","corr2.csv"]),\
@@ -69,12 +76,12 @@ def creatName(BC, J, D, L, P, m, phys):
     groupDisName = metaDislist[phys].replace("BC_re", BC).replace("J_re", J).replace("D_re", D).replace("L_re", L).replace("P_re", P).replace("m_re", m)
     return (mySourceName, groupSourceName, myTargetName, groupTargetName, groupAveName, groupDisName)
 
-def creatCpName(BC, J, D, L, P, m, phys):
-    CpName = newlist[phys].replace("BC_re", BC).replace("J_re", J).replace("D_re", D).replace("L_re", L).replace("P_re", P).replace("m_re", m) 
-    return CpName
-def creatColName(BC, J, D, L, P, m, phys):
-    colName = collist[phys].replace("BC_re", BC).replace("J_re", J).replace("D_re", D).replace("L_re", L).replace("P_re", P).replace("m_re", m) 
-    return colName
+# def creatCpName(BC, J, D, L, P, m, phys):
+#     CpName = newlist[phys].replace("BC_re", BC).replace("J_re", J).replace("D_re", D).replace("L_re", L).replace("P_re", P).replace("m_re", m) 
+#     return CpName
+# def creatColName(BC, J, D, L, P, m, phys):
+#     colName = collist[phys].replace("BC_re", BC).replace("J_re", J).replace("D_re", D).replace("L_re", L).replace("P_re", P).replace("m_re", m) 
+#     return colName
 def creatDir(BC, J, D, L, P, m, phys):
     avePath = "/".join(["tSDRG","Main_15","metadata","BC_re","J_re","D_re","L_re_P_re_m_re_s_re"])
     sourcePath = "/".join(["tSDRG","Main_15","data_random","BC_re","J_re","D_re","L_re_P_re_m_re_s_re"])
@@ -104,15 +111,62 @@ def gapAverage(BC, J, D, L, P, m, phys):
     folder = creatDir(BC, J, D, L, P, m, phys)
     name = creatName(BC, J, D, L, P, m, phys)
     myTarPath = folder[2] + "/" + name[2]
+
     gaplist = []
-    with open(myTarPath, "r") as targetFile:
-        collect = targetFile.readlines()
-        collect = [line.strip() for line in collect]
-        if collect and collect[0] == "energy":
-            del collect[0]        
-        for line in collect:
-            line = line.split(":")[-1].split(" ")
-            gaplist.append(line[1]-line[0])
+    try:
+        with open(myTarPath, "r") as targetFile:
+            collect = targetFile.readlines()
+            collect = [line.strip() for line in collect]
+            if collect and collect[0] == "energy":
+                del collect[0]
+            for line in collect:
+                line = line.split(":")[-1].split(" ")
+                try:
+                    gap = float(line[1]) - float(line[0])
+                    gaplist.append(gap)
+                except Exception as e:
+                    print(e)
+    except FileNotFoundError:
+        print(f"File not found: {myTarPath}")
+        return False, False, False
+    save_gapDistribute(gaplist, BC, J, D, L, P, m, phys)
+    gapAve = np.mean(gaplist)
+    sample = len(gaplist) 
+    error = np.std(gaplist, ddof=1)
+
+    return gapAve, sample, error
+
+def save_gapDistribute(gaplist, BC, J, D, L, P, m, phys):
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+    # print( f"folder[4]:{folder[4]}")
+    gapDisBase = folder[5] + "/" + name[5]
+    context = "ground_state_gap\n"
+    for i, value in enumerate(gaplist):
+        context += f"{value}\n"
+    
+    if context == "ground_state_gap\n":
+        return
+    else:
+        if not os.path.exists(gapDisBase):
+            os.makedirs(os.path.dirname(gapDisBase), exist_ok=True)
+        with open(gapDisBase, "w") as targetFile:
+            targetFile.write(context)
+
+def save_gap(BC, J, D, L, P, m, phys):
+    gapAve, sample, error = gapAverage(BC, J, D, L, P, m, phys)
+    if gapAve == False:
+        print(f"Error: No data found for {BC}, {J}, {D}, {L}, {P}, {m}, {phys}")
+        return
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+    # print( f"folder[4]:{folder[4]}")
+    myTarPath = folder[4] + "/" + name[4]
+    # print(f"myTarPath:{myTarPath}")
+    if not os.path.exists(myTarPath):
+        os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
+    with open(myTarPath, "w") as targetFile:
+        targetFile.write(f"ground_state_energy, sample, error\n{gapAve}, {sample}, {error/math.sqrt(sample)}")
             
 def corrAverage(BC, J, D, L, P, m, phys):
     folder = creatDir(BC, J, D, L, P, m, phys)
@@ -194,17 +248,69 @@ def save_corr(BC, J, D, L, P, m, phys):
             continue
         myTarPath = myTarPathBase.replace("dx_re", f"dx={key}")
         if BC == "OBC":
-            context = f"C_etoe=<S(0)S(dx={key})>,erro,sample\n" + f"{corr[key]},{error[key]},{sample[key]}"
+            context = f"C_etoe=<S(0)S(dx={key})>,sample,errorbar\n" + f"{corr[key]},{sample[key]},{error[key]/math.sqrt({sample[key]})}"
         elif BC == "PBC":
-            context = f"C_bulk=<S(0)S(dx={key})>,erro,sample\n" + f"{corr[key]},{error[key]},{sample[key]}"
+            context = f"C_bulk=<S(0)S(dx={key})>,sample,errorbar\n" + f"{corr[key]},{sample[key]},{error[key]/math.sqrt({sample[key]})}"
         if not os.path.exists(myTarPath):
             os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
         with open(myTarPath, "w") as targetFile:
             targetFile.write(context)
 
 
-# def save_ZL():
+def ZLAverage(BC, J, D, L, P, m, phys):
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+    myTarPath = folder[2] + "/" + name[2]
+    zllist = []
     
+    try:
+        with open(myTarPath, "r") as targetFile:
+            zllist = targetFile.readlines()
+            if type(zllist[0]) == str or zllist[0] == "ZL":
+                del zllist[0]
+            zllist = [float(line.split(":")[-1]) for line in zllist]
+
+    except FileNotFoundError:
+        print(f"File not found: {myTarPath}")
+        return False, False, False
+    
+    save_zlDistribute(zllist, BC, J, D, L, P, m, phys)
+    zlAve = np.mean(zllist)
+    sample = len(zllist)
+    error = np.std(zllist, ddof=1)
+
+    return zlAve, sample, error
+
+def save_zlDistribute(zllist, BC, J, D, L, P, m, phys):
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+    # print( f"folder[4]:{folder[4]}")
+    zlDisBase = folder[5] + "/" + name[5]
+    context = "ZL\n"
+    for i, value in enumerate(zllist):
+        context += f"{value}\n"
+    if context == "ZL\n":
+        return
+    else:
+        if not os.path.exists(zlDisBase):
+            os.makedirs(os.path.dirname(zlDisBase), exist_ok=True)
+        with open(zlDisBase, "w") as targetFile:
+            targetFile.write(context)
+
+def save_ZL(BC, J, D, L, P, m, phys):
+    zlAve, sample, error = ZLAverage(BC, J, D, L, P, m, phys)
+    if zlAve == False:
+        print(f"Error: No data found for {BC}, {J}, {D}, {L}, {P}, {m}, {phys}")
+        return
+    folder = creatDir(BC, J, D, L, P, m, phys)
+    name = creatName(BC, J, D, L, P, m, phys)
+    # print( f"folder[4]:{folder[4]}")
+    myTarPath = folder[4] + "/" + name[4]
+
+    if not os.path.exists(myTarPath):
+        os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
+    with open(myTarPath, "w") as targetFile:
+        targetFile.write(f"ZL, sample, errorbar\n{zlAve}, {sample}, {error/math.sqrt(sample)}")    
 # def save_gap():
 
 def list_txt_files(directory):
@@ -227,20 +333,19 @@ if __name__ == "__main__":
     chi = "m" + str(parameterlist["chi"])
     s1 = int(sys.argv[2])
     s2 = int(sys.argv[3])
-    if BC == "PBC":
-        s_list = ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]
-        s_list = ["corr1","corr2"]
-    else:
-        s_list = ["ZL","corr1","corr2","J_list","energy","dimerization","w_loc","seed"]
-        s_list = ["corr1","corr2"]
+    # if BC == "PBC":
+    #     s_list = ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]
+    #     s_list = ["corr1","corr2"]
+    # else:
+    #     s_list = ["ZL","corr1","corr2","J_list","energy","dimerization","w_loc","seed"]
+    #     s_list = ["corr1","corr2"]
         
-    for s in s_list:
-        for L in para.L_str:
-            for J in para.J_str:
-                    arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
-    # print(arg)     
-    # corr, sample, error = corrAverage("OBC", "Jdis010", "Dim000", "L31", "P10", "m40", "corr1")
+    # for s in s_list:
+    #     for L in para.L_str:
+    #         for J in para.J_str:
+    #                 arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
+
     save_corr(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "corr1")    
-    # print(corr)
-    # print(sample)
-    # print(error)
+    save_corr(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "corr2")
+    save_gap(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "energy")   
+    save_ZL(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "ZL")   
