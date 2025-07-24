@@ -333,19 +333,24 @@ if __name__ == "__main__":
     chi = "m" + str(parameterlist["chi"])
     s1 = int(sys.argv[2])
     s2 = int(sys.argv[3])
-    # if BC == "PBC":
-    #     s_list = ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]
-    #     s_list = ["corr1","corr2"]
-    # else:
-    #     s_list = ["ZL","corr1","corr2","J_list","energy","dimerization","w_loc","seed"]
-    #     s_list = ["corr1","corr2"]
+    if BC == "PBC":
+        s_list = ["ZL","corr1","corr2","string","J_list","energy","dimerization","w_loc","seed"]
+        s_list = ["corr1","corr2"]
+    else:
+        s_list = ["ZL","corr1","corr2","J_list","energy","dimerization","w_loc","seed"]
+        s_list = ["corr1","corr2"]
         
     # for s in s_list:
-    #     for L in para.L_str:
-    #         for J in para.J_str:
-    #                 arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
+    for D in para.D_str:
+        for L in para.L_str:
+            for J in para.J_str:
+                save_corr(BC, J, D, L, f"P{Pdis}", f"{chi}", "corr1")    
+                save_corr(BC, J, D, L, f"P{Pdis}", f"{chi}", "corr2")
+                save_gap(BC, J, D, L, f"P{Pdis}", f"{chi}", "energy")   
+                save_ZL(BC, J, D, L, f"P{Pdis}", f"{chi}", "ZL")   
+                    # arg.append((BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", s, s1, s2))
 
-    save_corr(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "corr1")    
-    save_corr(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "corr2")
-    save_gap(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "energy")   
-    save_ZL(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "ZL")   
+    # save_corr(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "corr1")    
+    # save_corr(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "corr2")
+    # save_gap(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "energy")   
+    # save_ZL(BC, J, para.D_str[0], L, f"P{Pdis}", f"{chi}", "ZL")   

@@ -107,7 +107,7 @@ def submitPara(parameterlist, tSDRG_path):
                 submitlsit.append(name)
     return (submitlsit, argvlist)           
 
-# edit & submit task
+# edit script & submit task
 def EditandSub(paraPath,script_path,output_path,jobName):
     task = ""
     with open(paraPath,"r") as file:
