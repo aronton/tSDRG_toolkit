@@ -248,9 +248,9 @@ def save_corr(BC, J, D, L, P, m, phys):
             continue
         myTarPath = myTarPathBase.replace("dx_re", f"dx={key}")
         if BC == "OBC":
-            context = f"C_etoe=<S(0)S(dx={key})>,sample,errorbar\n" + f"{corr[key]},{sample[key]},{error[key]/math.sqrt({sample[key]})}"
+            context = f"C_etoe=<S(0)S(dx={key})>,sample,errorbar\n" + f"{corr[key]},{sample[key]},{error[key]/math.sqrt(sample[key])}"
         elif BC == "PBC":
-            context = f"C_bulk=<S(0)S(dx={key})>,sample,errorbar\n" + f"{corr[key]},{sample[key]},{error[key]/math.sqrt({sample[key]})}"
+            context = f"C_bulk=<S(0)S(dx={key})>,sample,errorbar\n" + f"{corr[key]},{sample[key]},{error[key]/math.sqrt(sample[key])}"
         if not os.path.exists(myTarPath):
             os.makedirs(os.path.dirname(myTarPath), exist_ok=True)
         with open(myTarPath, "w") as targetFile:
