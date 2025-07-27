@@ -12,7 +12,18 @@ date
 FILE=$1
 outputPath="replace4"
 
-cd /home/aronton/tSDRG_random/tSDRG/Main_15
+if [ -d "/home/aronton/tSDRG_random/tSDRG/Main_15" ]; then
+    cd /home/aronton/tSDRG_random/tSDRG/Main_15
+    echo "working on scopion"
+
+elif [ -d "/ceph/work/NTHU-qubit/LYT/tSDRG_random/Main_15" ]; then
+    cd /ceph/work/NTHU-qubit/LYT/tSDRG_random/Main_15
+    echo "working on dicos"
+
+else
+    echo "找不到 Main_15 目錄！"
+    exit 1
+fi
 # 讀取 eee 檔案並解析 s1, s2, ds
 while IFS=: read -r key value; do
     value=$(echo "$value" | xargs)  # 去除前後空白
