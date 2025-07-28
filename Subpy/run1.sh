@@ -12,18 +12,25 @@ date
 FILE=$1
 outputPath="replace4"
 
-if [ -d "/home/aronton/tSDRG_random/tSDRG/Main_15" ]; then
-    cd /home/aronton/tSDRG_random/tSDRG/Main_15
+#!/bin/bash
+
+scopionPath="/home/aronton/tSDRG_random"
+dicosPath="/ceph/work/NTHU-qubit/LYT/tSDRG_random"
+
+if [ -d "${scopionPath}/tSDRG/Main_15" ]; then
+    tSDRGpath="${scopionPath}"
+    cd "${tSDRGpath}/tSDRG/Main_15"
     echo "working on scopion"
 
-elif [ -d "/ceph/work/NTHU-qubit/LYT/tSDRG_random/Main_15" ]; then
-    cd /ceph/work/NTHU-qubit/LYT/tSDRG_random/Main_15
+elif [ -d "${dicosPath}/tSDRG/Main_15" ]; then
+    tSDRGpath="${dicosPath}"
+    cd "${tSDRGpath}/tSDRG/Main_15"
     echo "working on dicos"
-
 else
-    echo "找不到 Main_15 目錄！"
+    echo "❌ 找不到 Main_15 目錄！"
     exit 1
 fi
+echo "📁 當前工作路徑：$(pwd)"
 # 讀取 eee 檔案並解析 s1, s2, ds
 while IFS=: read -r key value; do
     value=$(echo "$value" | xargs)  # 去除前後空白
@@ -93,10 +100,10 @@ for ((i=0; i<cols; i++)); do
     for ((j=0; j<rows; j++)); do
         index=$((s1 - 1 + i * rows + j + 1))
         if [[ $j -eq 0 || $j -eq $((rows - 1)) ]]; then
-            run_and_print srun --ntasks=1 --nodes=1 --cpus-per-task=1  --cpu-bind=cores ./spin15_250722.exe ${FILE} ${index} ${index} &
+            run_and_print srun --ntasks=1 --nodes=1 --cpus-per-task=1  --cpu-bind=cores ./spin15_run.exe ${FILE} ${index} ${index} &
         else
         # echo "srun --overlap --exclusive --nodes=1 --ntasks=1 --cpus-per-task=1 ./spin150531.exe ${FILE} ${index} ${index} &"
-            srun  --ntasks=1 --nodes=1 --cpus-per-task=1 --cpu-bind=cores ./spin15_250722.exe ${FILE} ${index} ${index} &
+            srun  --ntasks=1 --nodes=1 --cpus-per-task=1 --cpu-bind=cores ./spin15_run.exe ${FILE} ${index} ${index} &
         fi 
     done
     s2_combine=$((s1 - 1 + (i+1) * rows ))
@@ -106,12 +113,12 @@ for ((i=0; i<cols; i++)); do
     echo -e "Round${i} elapsed: $elapsed seconds\n\n"
 
     # echo "python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ""${FILE}"" ${s1_combine}"" ${s2_combine}"
-    run_and_print python /home/aronton/tSDRG_random/Subpy/combine.py "${FILE}" "${s1_combine}" "${s2_combine}"
-    run_and_print python /home/aronton/tSDRG_random/Subpy/ave.py "${FILE}" "${s1_combine}" "${s2_combine}"
+    run_and_print python ${tSDRGpath}/Subpy/combine.py "${FILE}" "${s1_combine}" "${s2_combine}"
+    run_and_print python ${tSDRGpath}/Subpy/ave.py "${FILE}" "${s1_combine}" "${s2_combine}"
 
     echo "Round${i} finished $(date)\n\n"
 done
 # python /dicos_ui_home/aronton/tSDRG_random/Subpy/combine.py ${FILE}
-run_and_print python /home/aronton/tSDRG_random/Subpy/combine.py "${FILE}" 1 "${s2}"
-run_and_print python /home/aronton/tSDRG_random/Subpy/ave.py "${FILE}" 1 "${s2}"
+run_and_print python ${tSDRGpath}/Subpy/combine.py "${FILE}" 1 "${s2}"
+run_and_print python ${tSDRGpath}/Subpy/ave.py "${FILE}" 1 "${s2}"
 echo "Job finished $(date)"
